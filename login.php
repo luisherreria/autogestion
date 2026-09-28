@@ -66,6 +66,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['codigo'] = '';
             $_SESSION['mail_auto'] = $emailAdmin;
             $_SESSION['mail_deb'] = '';
+            $_SESSION['mail_pago'] = '';
+            $_SESSION['mailcontra'] = '';
+            $_SESSION['tipos_correo'] = array();
+            $_SESSION['permisos'] = permisosCompletos();
             header('Location: index.php');
             exit;
         } elseif ($adminEncontrado && !$adminClaveOk) {
@@ -81,6 +85,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['codigo'] = '';
             $_SESSION['mail_auto'] = '';
             $_SESSION['mail_deb'] = '';
+            $_SESSION['mail_pago'] = '';
+            $_SESSION['mailcontra'] = '';
+            $_SESSION['tipos_correo'] = array();
+            $_SESSION['permisos'] = permisosCompletos();
             header('Location: index.php');
             exit;
         } elseif ($clave !== $config['clave']) {
@@ -90,20 +98,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo = Database::getConnection();
             $like = '%' . str_replace(array('%', '_'), array('\\%', '\\_'), strtolower($usuario)) . '%';
             $stmt = $pdo->prepare(
-                'SELECT CODIGO, NOMBRE, MAIL_AUTO, MAIL_DEB
+                'SELECT CODIGO, NOMBRE, MAIL_AUTO, MAIL_DEB, MAIL_PAGO, MAILCONTRA
                  FROM ebamp
-                 WHERE MAIL_AUTO IS NOT NULL
-                   AND TRIM(MAIL_AUTO) <> \'\'
-                   AND LOWER(MAIL_AUTO) LIKE :mail
+                 WHERE LOWER(IFNULL(MAIL_AUTO, \'\')) LIKE :mail_auto
+                    OR LOWER(IFNULL(MAIL_DEB, \'\')) LIKE :mail_deb
+                    OR LOWER(IFNULL(MAIL_PAGO, \'\')) LIKE :mail_pago
+                    OR LOWER(IFNULL(MAILCONTRA, \'\')) LIKE :mail_contra
                  ORDER BY CODIGO ASC'
             );
-            $stmt->execute(array(':mail' => $like));
+            $stmt->execute(array(
+                ':mail_auto' => $like,
+                ':mail_deb' => $like,
+                ':mail_pago' => $like,
+                ':mail_contra' => $like,
+            ));
             $filas = $stmt->fetchAll();
 
             $prestador = null;
+            $tiposEncontrados = array();
             foreach ($filas as $fila) {
-                if (emailEstaEnLista($fila['MAIL_AUTO'], $usuario)) {
+                $tiposFila = tiposCorreoDelEmail($fila, $usuario);
+                if (count($tiposFila) > 0) {
                     $prestador = $fila;
+                    $tiposEncontrados = $tiposFila;
                     break;
                 }
             }
@@ -119,8 +136,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['email'] = $usuario;
                 $_SESSION['codigo'] = trim($prestador['CODIGO']);
                 $_SESSION['nombre'] = trim($prestador['NOMBRE']);
-                $_SESSION['mail_auto'] = trim($prestador['MAIL_AUTO']);
-                $_SESSION['mail_deb'] = trim($prestador['MAIL_DEB']);
+                $_SESSION['mail_auto'] = trim((string) $prestador['MAIL_AUTO']);
+                $_SESSION['mail_deb'] = trim((string) $prestador['MAIL_DEB']);
+                $_SESSION['mail_pago'] = trim((string) $prestador['MAIL_PAGO']);
+                $_SESSION['mailcontra'] = trim((string) $prestador['MAILCONTRA']);
+                $_SESSION['tipos_correo'] = $tiposEncontrados;
+                $_SESSION['permisos'] = permisosPorTipos($pdo, $tiposEncontrados);
                 header('Location: index.php');
                 exit;
             }

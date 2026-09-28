@@ -60,6 +60,10 @@ function montoPago($valor)
 
 $esAdmin = isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin';
 $codigoPrestador = isset($_SESSION['codigo']) ? trim($_SESSION['codigo']) : '';
+if (!$esAdmin && !tienePermiso('pagos')) {
+    echo json_encode(array('data' => array()));
+    exit;
+}
 
 try {
     $config = appConfig();

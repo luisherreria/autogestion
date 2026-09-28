@@ -12,8 +12,10 @@ $secciones = array(
     'normativas' => array('titulo' => 'Normativas', 'icono' => 'fa-book'),
     'contratos' => array('titulo' => 'Contratos', 'icono' => 'fa-file-contract'),
     'pagos' => array('titulo' => 'Pagos Realizados', 'icono' => 'fa-money-bill-wave'),
+    'empadronamiento' => array('titulo' => 'Empadronamiento Afiliados', 'icono' => 'fa-id-card', 'permiso' => 'ver_empadronamiento'),
     'admin_archivos' => array('titulo' => 'Gestión de Archivos', 'icono' => 'fa-cloud-arrow-up', 'solo_admin' => true),
     'auditoria_vista' => array('titulo' => 'Control de Auditoría', 'icono' => 'fa-clipboard-list', 'solo_admin' => true),
+    'admin_permisos' => array('titulo' => 'Gestión de Permisos', 'icono' => 'fa-user-lock', 'solo_admin' => true),
 );
 
 $seccion = isset($_GET['seccion']) ? $_GET['seccion'] : 'autorizaciones';
@@ -25,8 +27,36 @@ $nombre = isset($_SESSION['nombre']) ? $_SESSION['nombre'] : '';
 $codigo = isset($_SESSION['codigo']) ? $_SESSION['codigo'] : '';
 $esAdmin = isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin';
 $esLuis = $esAdmin;
+$accesoDenegado = false;
 
-if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+try {
+    refrescarPermisosSesion(Database::getConnection());
+} catch (Exception $e) {
+    if (!$esAdmin) {
+        $_SESSION['permisos'] = permisosVacios();
+    }
+}
+
+$soloAdmin = !empty($secciones[$seccion]['solo_admin']);
+$clavePermisoActual = isset($secciones[$seccion]['permiso']) ? $secciones[$seccion]['permiso'] : $seccion;
+$puedeVer = $esAdmin || (!$soloAdmin && tienePermiso($clavePermisoActual));
+if (!$puedeVer) {
+    if (!isset($_GET['seccion']) || $_GET['seccion'] === '') {
+        foreach ($secciones as $claveAlternativa => $itemAlternativo) {
+            if (!empty($itemAlternativo['solo_admin'])) {
+                continue;
+            }
+            $permisoAlternativo = isset($itemAlternativo['permiso']) ? $itemAlternativo['permiso'] : $claveAlternativa;
+            if (tienePermiso($permisoAlternativo)) {
+                header('Location: index.php?seccion=' . rawurlencode($claveAlternativa));
+                exit;
+            }
+        }
+    }
+    $accesoDenegado = true;
+}
+
+if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $puedeVer) {
     require dirname(__FILE__) . '/modulos/admin_archivos_post.php';
 }
 ?>
@@ -35,7 +65,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo h($secciones[$seccion]['titulo']); ?> - Autogestión</title>
+    <title><?php echo h($accesoDenegado ? 'Acceso denegado' : $secciones[$seccion]['titulo']); ?> - Autogestión</title>
     <link rel="icon" type="image/x-icon" href="upload/img/favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -95,6 +125,11 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!empty($item['solo_admin'])) {
                     continue;
                 }
+                $clavePermiso = isset($item['permiso']) ? $item['permiso'] : $clave;
+                $permisoActivo = isset($_SESSION['permisos'][$clavePermiso]) && (int) $_SESSION['permisos'][$clavePermiso] === 1;
+                if (!(isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') && !$permisoActivo) {
+                    continue;
+                }
                 ?>
                 <a href="index.php?seccion=<?php echo h($clave); ?>"
                    class="nav-portal flex items-center gap-3 px-4 py-3 text-sm hover:bg-slate-800 <?php echo $seccion === $clave ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'border-l-4 border-transparent'; ?>">
@@ -103,7 +138,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 </a>
             <?php } ?>
             <?php if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') { ?>
-                <details class="border-t border-slate-700" <?php echo ($seccion === 'admin_archivos' || $seccion === 'auditoria_vista') ? 'open' : ''; ?>>
+                <details class="border-t border-slate-700" <?php echo ($seccion === 'admin_archivos' || $seccion === 'auditoria_vista' || $seccion === 'admin_permisos') ? 'open' : ''; ?>>
                     <summary class="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer hover:bg-slate-800 list-none">
                         <i class="fa-solid fa-user-shield w-5 text-center"></i>
                         <span class="flex-1">Administrador</span>
@@ -119,14 +154,23 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         <i class="fa-solid fa-clipboard-list w-5 text-center"></i>
                         <span>Control de Auditoría</span>
                     </a>
+                    <a href="index.php?seccion=admin_permisos"
+                       class="nav-portal flex items-center gap-3 pl-10 pr-4 py-2 text-sm hover:bg-slate-800 <?php echo $seccion === 'admin_permisos' ? 'bg-slate-800 text-white' : ''; ?>">
+                        <i class="fa-solid fa-user-lock w-5 text-center"></i>
+                        <span>Gestión de Permisos</span>
+                    </a>
                 </details>
             <?php } ?>
         </nav>
     </aside>
 
     <main class="ml-64 mt-16 p-6 min-h-screen">
-        <h1 class="text-2xl font-semibold text-slate-900 mb-4"><?php echo h($secciones[$seccion]['titulo']); ?></h1>
-        <?php require dirname(__FILE__) . '/modulos/' . $seccion . '.php'; ?>
+        <h1 class="text-2xl font-semibold text-slate-900 mb-4"><?php echo h($accesoDenegado ? 'Acceso denegado' : $secciones[$seccion]['titulo']); ?></h1>
+        <?php if ($accesoDenegado) { ?>
+            <div class="bg-white rounded-xl shadow p-8 text-center text-slate-600">No tiene permiso para ver esta sección.</div>
+        <?php } else { ?>
+            <?php require dirname(__FILE__) . '/modulos/' . $seccion . '.php'; ?>
+        <?php } ?>
     </main>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -264,6 +308,92 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     language: idiomaTabla
                 });
             }
+            if ($('#tablaPermisos').length && $.fn.dataTable) {
+                var idiomaPermisos = $.extend({}, idiomaTabla, { emptyTable: 'No hay permisos para mostrar' });
+                var tablaPermisos = $('#tablaPermisos').DataTable({
+                    pageLength: 25,
+                    lengthMenu: [[25, 50, 100, -1], [25, 50, 100, 'Todos']],
+                    order: [[0, 'asc']],
+                    columnDefs: [{ orderable: false, targets: -1 }],
+                    language: idiomaPermisos
+                });
+                var camposPermiso = [
+                    'ver_autorizaciones',
+                    'ver_obras_sociales',
+                    'ver_coseguros',
+                    'ver_normativas',
+                    'ver_contratos',
+                    'ver_pagos',
+                    'ver_empadronamiento'
+                ];
+
+                function htmlPermiso(valor) {
+                    if (parseInt(valor, 10) === 1) {
+                        return '<span class="text-green-600 text-lg" title="Sí"><i class="fa-solid fa-check"></i></span>';
+                    }
+                    return '<span class="text-red-600 text-lg" title="No"><i class="fa-solid fa-xmark"></i></span>';
+                }
+
+                function cerrarModalPermisos() {
+                    $('#modal-permisos').addClass('hidden').removeClass('flex');
+                    $('#permisos-error').addClass('hidden').text('');
+                }
+
+                $('#tablaPermisos').on('click', '.btn-editar-permiso', function () {
+                    var boton = $(this);
+                    $('#permiso-id').val(boton.attr('data-id'));
+                    $('#permiso-tipo').text(boton.attr('data-etiqueta'));
+                    var i;
+                    for (i = 0; i < camposPermiso.length; i++) {
+                        var campo = camposPermiso[i];
+                        $('#form-permisos input[name="' + campo + '"]').prop('checked', boton.attr('data-' + campo) === '1');
+                    }
+                    $('#permisos-error').addClass('hidden').text('');
+                    $('#modal-permisos').removeClass('hidden').addClass('flex');
+                });
+
+                $('#cerrar-modal-permisos, #cancelar-modal-permisos').on('click', cerrarModalPermisos);
+
+                $('#form-permisos').on('submit', function (evento) {
+                    evento.preventDefault();
+                    var datos = { id: $('#permiso-id').val() };
+                    var i;
+                    for (i = 0; i < camposPermiso.length; i++) {
+                        var campo = camposPermiso[i];
+                        datos[campo] = $('#form-permisos input[name="' + campo + '"]').is(':checked') ? 1 : 0;
+                    }
+                    $('#guardar-permisos').prop('disabled', true);
+                    $.ajax({
+                        url: 'ajax_permisos.php',
+                        type: 'POST',
+                        dataType: 'json',
+                        data: datos
+                    }).done(function (respuesta) {
+                        if (!respuesta || !respuesta.ok) {
+                            $('#permisos-error').removeClass('hidden').text((respuesta && respuesta.error) ? respuesta.error : 'No se pudo guardar.');
+                            return;
+                        }
+                        var boton = $('#tablaPermisos .btn-editar-permiso[data-id="' + respuesta.id + '"]');
+                        var fila = boton.closest('tr');
+                        var j;
+                        for (j = 0; j < camposPermiso.length; j++) {
+                            var campo = camposPermiso[j];
+                            var valor = respuesta.permisos[campo] ? 1 : 0;
+                            boton.attr('data-' + campo, valor);
+                            var celda = fila.find('td[data-campo="' + campo + '"]');
+                            celda.html(htmlPermiso(valor));
+                            if (celda.length) {
+                                tablaPermisos.cell(celda.get(0)).invalidate();
+                            }
+                        }
+                        cerrarModalPermisos();
+                    }).fail(function () {
+                        $('#permisos-error').removeClass('hidden').text('No se pudo guardar.');
+                    }).always(function () {
+                        $('#guardar-permisos').prop('disabled', false);
+                    });
+                });
+            }
             if ($('#tabla-auditoria').length) {
                 $('#tabla-auditoria').DataTable({
                     pageLength: 25,
@@ -295,7 +425,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 });
             }
 
-            var menuActual = <?php echo json_encode($secciones[$seccion]['titulo']); ?>;
+            var menuActual = <?php echo json_encode($accesoDenegado ? 'Acceso denegado' : $secciones[$seccion]['titulo']); ?>;
 
             $('aside').on('click', 'a.nav-portal', function () {
                 registrarAuditoria('menu', $.trim($(this).text()));

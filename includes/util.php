@@ -386,6 +386,207 @@ function codigosObraSocialSesion($pdo, $codigoPrestador)
     return $codigos;
 }
 
+function mapaModulosPermiso()
+{
+    return array(
+        'ver_autorizaciones' => array('clave' => 'autorizaciones', 'titulo' => 'Autorizaciones'),
+        'ver_obras_sociales' => array('clave' => 'obras_sociales', 'titulo' => 'Obras Sociales Vigentes'),
+        'ver_coseguros' => array('clave' => 'coseguros', 'titulo' => 'Coseguros y APB'),
+        'ver_normativas' => array('clave' => 'normativas', 'titulo' => 'Normativas'),
+        'ver_contratos' => array('clave' => 'contratos', 'titulo' => 'Contratos'),
+        'ver_pagos' => array('clave' => 'pagos', 'titulo' => 'Pagos Realizados'),
+        'ver_empadronamiento' => array('clave' => 'ver_empadronamiento', 'titulo' => 'Emp. Afiliados'),
+    );
+}
+
+function columnasCorreoPrestador()
+{
+    return array(
+        'MAIL_AUTO' => 'mail_auto',
+        'MAIL_DEB' => 'mail_deb',
+        'MAIL_PAGO' => 'mail_pago',
+        'MAILCONTRA' => 'mailcontra',
+    );
+}
+
+function etiquetaTipoCorreo($tipo)
+{
+    $etiquetas = array(
+        'mail_auto' => 'Autorizaciones (mail_auto)',
+        'mail_deb' => 'Débitos (mail_deb)',
+        'mail_pago' => 'Pagos (mail_pago)',
+        'mailcontra' => 'Contratos (mailcontra)',
+    );
+    $tipo = (string) $tipo;
+    return isset($etiquetas[$tipo]) ? $etiquetas[$tipo] : $tipo;
+}
+
+function permisosVacios()
+{
+    $permisos = array();
+    foreach (mapaModulosPermiso() as $modulo) {
+        $permisos[$modulo['clave']] = 0;
+    }
+    return $permisos;
+}
+
+function permisosCompletos()
+{
+    $permisos = array();
+    foreach (mapaModulosPermiso() as $modulo) {
+        $permisos[$modulo['clave']] = 1;
+    }
+    return $permisos;
+}
+
+function asegurarTablaPermisos($pdo)
+{
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS a_permisos (
+            id INT NOT NULL AUTO_INCREMENT,
+            tipo_correo VARCHAR(50) NOT NULL,
+            ver_autorizaciones TINYINT(1) DEFAULT 0,
+            ver_obras_sociales TINYINT(1) DEFAULT 0,
+            ver_coseguros TINYINT(1) DEFAULT 0,
+            ver_normativas TINYINT(1) DEFAULT 0,
+            ver_contratos TINYINT(1) DEFAULT 0,
+            ver_pagos TINYINT(1) DEFAULT 0,
+            ver_empadronamiento TINYINT(1) DEFAULT 0,
+            PRIMARY KEY (id),
+            UNIQUE KEY tipo_correo (tipo_correo)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8"
+    );
+    $columnaEmpadronamiento = $pdo->query("SHOW COLUMNS FROM a_permisos LIKE 'ver_empadronamiento'")->fetch();
+    if (!$columnaEmpadronamiento) {
+        $pdo->exec('ALTER TABLE a_permisos ADD COLUMN ver_empadronamiento TINYINT(1) DEFAULT 0');
+    }
+
+    $semilla = array(
+        array('mail_auto', 1, 1, 1, 1, 0, 0),
+        array('mail_deb', 0, 1, 1, 1, 1, 1),
+        array('mail_pago', 0, 1, 1, 1, 1, 1),
+        array('mailcontra', 0, 1, 1, 1, 1, 0),
+    );
+    $stmt = $pdo->prepare(
+        'INSERT IGNORE INTO a_permisos
+            (tipo_correo, ver_autorizaciones, ver_obras_sociales, ver_coseguros, ver_normativas, ver_contratos, ver_pagos)
+         VALUES
+            (:tipo, :autorizaciones, :obras, :coseguros, :normativas, :contratos, :pagos)'
+    );
+    foreach ($semilla as $fila) {
+        $stmt->execute(array(
+            ':tipo' => $fila[0],
+            ':autorizaciones' => $fila[1],
+            ':obras' => $fila[2],
+            ':coseguros' => $fila[3],
+            ':normativas' => $fila[4],
+            ':contratos' => $fila[5],
+            ':pagos' => $fila[6],
+        ));
+    }
+}
+
+function tiposCorreoDelEmail($fila, $email)
+{
+    $tipos = array();
+    foreach (columnasCorreoPrestador() as $columna => $tipo) {
+        $lista = isset($fila[$columna]) ? $fila[$columna] : '';
+        if (emailEstaEnLista($lista, $email)) {
+            $tipos[] = $tipo;
+        }
+    }
+    return $tipos;
+}
+
+function permisosPorTipos($pdo, $tipos)
+{
+    asegurarTablaPermisos($pdo);
+    $permisos = permisosVacios();
+    if (!is_array($tipos) || count($tipos) === 0) {
+        return $permisos;
+    }
+
+    $marcas = array();
+    $params = array();
+    $indice = 0;
+    foreach ($tipos as $tipo) {
+        $tipo = trim((string) $tipo);
+        if ($tipo === '') {
+            continue;
+        }
+        $clave = ':tipo' . $indice;
+        $marcas[] = $clave;
+        $params[$clave] = $tipo;
+        $indice++;
+    }
+    if (count($marcas) === 0) {
+        return $permisos;
+    }
+
+    $sql = 'SELECT ' . implode(', ', array_keys(mapaModulosPermiso())) . '
+            FROM a_permisos
+            WHERE tipo_correo IN (' . implode(', ', $marcas) . ')';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    foreach ($stmt->fetchAll() as $fila) {
+        foreach (mapaModulosPermiso() as $columna => $modulo) {
+            if (!empty($fila[$columna])) {
+                $permisos[$modulo['clave']] = 1;
+            }
+        }
+    }
+    return $permisos;
+}
+
+function tiposCorreoPorCodigo($pdo, $codigo, $email)
+{
+    $codigo = trim((string) $codigo);
+    $email = trim((string) $email);
+    if ($codigo === '' || $email === '') {
+        return array();
+    }
+    $stmt = $pdo->prepare(
+        'SELECT MAIL_AUTO, MAIL_DEB, MAIL_PAGO, MAILCONTRA
+         FROM ebamp
+         WHERE TRIM(CODIGO) = :codigo
+         ORDER BY CODIGO ASC'
+    );
+    $stmt->execute(array(':codigo' => $codigo));
+    $tipos = array();
+    foreach ($stmt->fetchAll() as $fila) {
+        foreach (tiposCorreoDelEmail($fila, $email) as $tipo) {
+            if (!in_array($tipo, $tipos, true)) {
+                $tipos[] = $tipo;
+            }
+        }
+    }
+    return $tipos;
+}
+
+function refrescarPermisosSesion($pdo)
+{
+    if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') {
+        $_SESSION['tipos_correo'] = array();
+        $_SESSION['permisos'] = permisosCompletos();
+        return;
+    }
+
+    if (!isset($_SESSION['tipos_correo']) || !is_array($_SESSION['tipos_correo'])) {
+        $codigo = isset($_SESSION['codigo']) ? $_SESSION['codigo'] : '';
+        $email = isset($_SESSION['email']) ? $_SESSION['email'] : '';
+        $_SESSION['tipos_correo'] = tiposCorreoPorCodigo($pdo, $codigo, $email);
+    }
+    $_SESSION['permisos'] = permisosPorTipos($pdo, $_SESSION['tipos_correo']);
+}
+
+function tienePermiso($modulo)
+{
+    if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') {
+        return true;
+    }
+    return isset($_SESSION['permisos'][$modulo]) && $_SESSION['permisos'][$modulo];
+}
+
 function prestadorPuedeVerCarpeta($pdo, $carpeta)
 {
     if ($carpeta === '' || strcasecmp($carpeta, 'general') === 0 || esUsuarioLuis()) {

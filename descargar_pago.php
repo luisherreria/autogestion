@@ -11,6 +11,11 @@ if ($nombre === '' || strtolower(pathinfo($nombre, PATHINFO_EXTENSION)) !== 'pdf
 }
 
 $esAdmin = isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin';
+if (!$esAdmin && !tienePermiso('pagos')) {
+    header('HTTP/1.1 404 Not Found');
+    echo 'Archivo no disponible';
+    exit;
+}
 if (!$esAdmin) {
     $codigo = isset($_SESSION['codigo']) ? trim($_SESSION['codigo']) : '';
     $partes = explode('_', $nombre);

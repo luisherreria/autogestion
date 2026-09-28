@@ -22,6 +22,19 @@ if ($relativoValido) {
     }
 }
 
+$permisoDescarga = array(
+    'autorizaciones' => 'autorizaciones',
+    'normativas' => 'normativas',
+    'coseguros' => 'coseguros',
+    'contratos' => 'contratos',
+    'comprobantes' => 'pagos',
+);
+if (isset($permisoDescarga[$tipo]) && !tienePermiso($permisoDescarga[$tipo])) {
+    header('HTTP/1.1 404 Not Found');
+    echo 'Archivo no disponible';
+    exit;
+}
+
 if (!isset($config['dirs'][$tipo]) || !$relativoValido) {
     header('HTTP/1.1 404 Not Found');
     echo 'Archivo no disponible';
