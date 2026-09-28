@@ -8,7 +8,7 @@ define('PORTAL_AUTOGESTION', true);
 $secciones = array(
     'autorizaciones' => array('titulo' => 'Autorizaciones', 'icono' => 'fa-file-medical'),
     'obras_sociales' => array('titulo' => 'Obras Sociales Vigentes', 'icono' => 'fa-briefcase-medical'),
-    'coseguros' => array('titulo' => 'Coseguros', 'icono' => 'fa-file-invoice-dollar'),
+    'coseguros' => array('titulo' => 'Coseguros y APB', 'icono' => 'fa-file-invoice-dollar'),
     'normativas' => array('titulo' => 'Normativas', 'icono' => 'fa-book'),
     'contratos' => array('titulo' => 'Contratos', 'icono' => 'fa-file-contract'),
     'pagos' => array('titulo' => 'Pagos Realizados', 'icono' => 'fa-money-bill-wave'),
@@ -40,7 +40,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-    <?php if ($seccion === 'auditoria_vista' || $seccion === 'pagos') { ?>
+    <?php if ($seccion === 'auditoria_vista' || $seccion === 'pagos' || $seccion === 'obras_sociales') { ?>
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
     <?php } ?>
     <style>
@@ -52,8 +52,10 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 0.375rem;
             padding: 0.25rem 0.5rem;
         }
-        #tablaPagos_wrapper .dt-buttons { margin: 0 0 0.75rem; }
-        #tablaPagos_wrapper .dt-buttons .dt-button {
+        #tablaPagos_wrapper .dt-buttons,
+        #tablaObrasSociales_wrapper .dt-buttons { margin: 0 0 0.75rem; }
+        #tablaPagos_wrapper .dt-buttons .dt-button,
+        #tablaObrasSociales_wrapper .dt-buttons .dt-button {
             background: #1e40af;
             color: #fff;
             border: 0;
@@ -129,7 +131,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-    <?php if ($seccion === 'auditoria_vista' || $seccion === 'pagos') { ?>
+    <?php if ($seccion === 'auditoria_vista' || $seccion === 'pagos' || $seccion === 'obras_sociales') { ?>
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
@@ -156,6 +158,20 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     previous: 'Anterior'
                 }
             };
+            if ($('#tablaObrasSociales').length && $.fn.dataTable) {
+                var idiomaObras = $.extend({}, idiomaTabla, { emptyTable: 'No hay obras sociales para mostrar' });
+                $('#tablaObrasSociales').DataTable({
+                    pageLength: 25,
+                    lengthMenu: [[25, 50, 100, -1], [25, 50, 100, 'Todos']],
+                    order: [],
+                    dom: 'lBfrtip',
+                    buttons: [
+                        { extend: 'excel', text: 'Excel' },
+                        { extend: 'print', text: 'Imprimir' }
+                    ],
+                    language: idiomaObras
+                });
+            }
             if ($('#tabla-datos').length) {
                 $('#tabla-datos').DataTable({
                     pageLength: 25,
@@ -279,13 +295,25 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 });
             }
 
+            var menuActual = <?php echo json_encode($secciones[$seccion]['titulo']); ?>;
+
             $('aside').on('click', 'a.nav-portal', function () {
                 registrarAuditoria('menu', $.trim($(this).text()));
             });
 
-            $(document).on('click', 'a[target="_blank"], a[href*="descargar.php"]', function () {
+            $(document).on('click', 'a[target="_blank"], a[href*="descargar.php"], a[href*="descargar_pago.php"]', function () {
                 var href = $(this).attr('href') || '';
-                registrarAuditoria('descarga', href);
+                var detalle = href;
+                var consulta = href.split('?')[1] || '';
+                var partes = consulta.split('&');
+                var i;
+                for (i = 0; i < partes.length; i++) {
+                    if (partes[i].indexOf('archivo=') === 0) {
+                        detalle = decodeURIComponent(partes[i].substring(8).replace(/\+/g, ' '));
+                        break;
+                    }
+                }
+                registrarAuditoria(menuActual, detalle);
             });
         });
     </script>
