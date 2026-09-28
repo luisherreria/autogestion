@@ -16,17 +16,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($usuario === '' || $clave === '') {
         $error = 'Complete usuario y clave.';
-    } elseif (strcasecmp($usuario, $config['admin_usuario']) === 0 && $clave === $config['clave']) {
-        session_regenerate_id(true);
-        $_SESSION['logueado'] = 1;
-        $_SESSION['es_admin'] = 1;
-        $_SESSION['nombre'] = 'Luis';
-        $_SESSION['codigo'] = '';
-        $_SESSION['mail_auto'] = '';
-        $_SESSION['mail_deb'] = '';
-        header('Location: index.php');
-        exit;
-    } elseif ($clave !== $config['clave']) {
+    } else {
+        $adminEncontrado = false;
+        $adminClaveOk = false;
+        $adminFila = null;
+        try {
+            $pdo = Database::getConnection();
+            $stmtAdmin = $pdo->prepare(
+                'SELECT USERNAME, PASSWORD, EMAIL, FIRST_NAME, LAST_NAME
+                 FROM users
+                 WHERE LOWER(TRIM(USERNAME)) = :usuario
+                    OR LOWER(TRIM(IFNULL(EMAIL, \'\'))) = :email
+                 LIMIT 20'
+            );
+            $usuarioLower = strtolower($usuario);
+            $stmtAdmin->execute(array(
+                ':usuario' => $usuarioLower,
+                ':email' => $usuarioLower,
+            ));
+            $admins = $stmtAdmin->fetchAll();
+            foreach ($admins as $filaAdmin) {
+                $adminEncontrado = true;
+                if (trim((string) $filaAdmin['PASSWORD']) === $clave) {
+                    $adminClaveOk = true;
+                    $adminFila = $filaAdmin;
+                    break;
+                }
+            }
+        } catch (Exception $e) {
+            $adminEncontrado = false;
+        }
+
+        if ($adminEncontrado && $adminClaveOk && $adminFila !== null) {
+            $nombreAdmin = trim($adminFila['FIRST_NAME'] . ' ' . $adminFila['LAST_NAME']);
+            if ($nombreAdmin === '') {
+                $nombreAdmin = trim($adminFila['USERNAME']);
+            }
+            $emailAdmin = trim((string) $adminFila['EMAIL']);
+            if ($emailAdmin === '') {
+                $emailAdmin = trim($adminFila['USERNAME']);
+            }
+            session_regenerate_id(true);
+            $_SESSION['logueado'] = 1;
+            $_SESSION['rol'] = 'admin';
+            $_SESSION['es_admin'] = 1;
+            $_SESSION['nombre'] = $nombreAdmin;
+            $_SESSION['usuario'] = trim($adminFila['USERNAME']);
+            $_SESSION['email'] = $emailAdmin;
+            $_SESSION['codigo'] = '';
+            $_SESSION['mail_auto'] = $emailAdmin;
+            $_SESSION['mail_deb'] = '';
+            header('Location: index.php');
+            exit;
+        } elseif ($adminEncontrado && !$adminClaveOk) {
+            $error = 'Usuario o clave incorrectos.';
+        } elseif (strcasecmp($usuario, $config['admin_usuario']) === 0 && $clave === $config['clave']) {
+            session_regenerate_id(true);
+            $_SESSION['logueado'] = 1;
+            $_SESSION['rol'] = 'admin';
+            $_SESSION['es_admin'] = 1;
+            $_SESSION['nombre'] = 'Luis';
+            $_SESSION['usuario'] = 'Luis';
+            $_SESSION['email'] = 'Luis';
+            $_SESSION['codigo'] = '';
+            $_SESSION['mail_auto'] = '';
+            $_SESSION['mail_deb'] = '';
+            header('Location: index.php');
+            exit;
+        } elseif ($clave !== $config['clave']) {
         $error = 'Usuario o clave incorrectos.';
     } else {
         try {
@@ -56,7 +113,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 session_regenerate_id(true);
                 $_SESSION['logueado'] = 1;
+                $_SESSION['rol'] = 'prestador';
                 $_SESSION['es_admin'] = 0;
+                $_SESSION['usuario'] = $usuario;
+                $_SESSION['email'] = $usuario;
                 $_SESSION['codigo'] = trim($prestador['CODIGO']);
                 $_SESSION['nombre'] = trim($prestador['NOMBRE']);
                 $_SESSION['mail_auto'] = trim($prestador['MAIL_AUTO']);
@@ -68,6 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'No se pudo validar el acceso. ' . $e->getMessage();
         }
     }
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -76,13 +137,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ingreso - Autogestión Prestadores</title>
+    <link rel="icon" type="image/x-icon" href="upload/img/favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 <body class="min-h-screen bg-slate-100 flex items-center justify-center p-4">
     <div class="w-full max-w-md bg-white rounded-2xl shadow-lg overflow-hidden">
         <div class="bg-blue-800 text-white px-6 py-8 text-center">
-            <div class="text-4xl mb-3"><i class="fa-solid fa-hospital"></i></div>
+            <img src="upload/img/solo_logo_comedica.png" alt="Comedica" class="w-auto h-32 mx-auto object-contain mb-3">
             <h1 class="text-2xl font-semibold">Autogestión Prestadores</h1>
             <p class="text-blue-100 text-sm mt-1">Ingrese con su usuario o email</p>
         </div>

@@ -5,17 +5,38 @@ require_once dirname(__FILE__) . '/includes/auth.php';
 
 $config = appConfig();
 $tipo = isset($_GET['tipo']) ? $_GET['tipo'] : '';
-$archivo = isset($_GET['archivo']) ? basename($_GET['archivo']) : '';
+$archivo = isset($_GET['archivo']) ? str_replace('\\', '/', $_GET['archivo']) : '';
 $ver = isset($_GET['modo']) && $_GET['modo'] === 'ver';
+$partes = explode('/', $archivo);
+$relativoValido = $archivo !== ''
+    && strpos($archivo, '..') === false
+    && $archivo[0] !== '/'
+    && $archivo[0] !== '.'
+    && count($partes) <= 2;
 
-if (!isset($config['dirs'][$tipo]) || $archivo === '' || $archivo === '.' || $archivo === '..' || $archivo[0] === '.') {
+if ($relativoValido) {
+    foreach ($partes as $parte) {
+        if ($parte === '' || $parte === '.' || $parte === '..' || $parte[0] === '.') {
+            $relativoValido = false;
+        }
+    }
+}
+
+if (!isset($config['dirs'][$tipo]) || !$relativoValido) {
+    header('HTTP/1.1 404 Not Found');
+    echo 'Archivo no disponible';
+    exit;
+}
+
+$carpeta = count($partes) === 2 ? $partes[0] : '';
+if ($carpeta !== '' && !prestadorPuedeVerCarpeta(Database::getConnection(), $carpeta)) {
     header('HTTP/1.1 404 Not Found');
     echo 'Archivo no disponible';
     exit;
 }
 
 $baseReal = realpath($config['dirs'][$tipo]);
-$ruta = $config['dirs'][$tipo] . DIRECTORY_SEPARATOR . $archivo;
+$ruta = $config['dirs'][$tipo] . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $archivo);
 $archivoReal = realpath($ruta);
 
 if ($baseReal === false || $archivoReal === false || !is_file($archivoReal)) {
@@ -30,6 +51,8 @@ if (strpos($archivoReal, $baseReal) !== 0) {
     echo 'Archivo no disponible';
     exit;
 }
+
+$archivo = basename($archivo);
 
 $extension = strtolower(pathinfo($archivo, PATHINFO_EXTENSION));
 $tipos = array(
