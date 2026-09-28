@@ -24,7 +24,64 @@ function iconoCoseguro($archivo)
     if (in_array($extension, array('xls', 'xlsx', 'csv'), true)) {
         return 'fa-file-excel text-green-600';
     }
+    if (in_array($extension, array('doc', 'docx'), true)) {
+        return 'fa-file-word text-blue-700';
+    }
+    if (in_array($extension, array('png', 'jpg', 'jpeg'), true)) {
+        return 'fa-file-image text-sky-600';
+    }
     return 'fa-file text-slate-500';
+}
+
+function esArchivoApb($nombre)
+{
+    return stripos((string) $nombre, 'APB') !== false;
+}
+
+function filtrarCosegurosPrestador($filas)
+{
+    $apb = array();
+    $porPrestador = array();
+    $porObra = array();
+    $generales = array();
+
+    $vistos = array();
+    foreach ($filas as $fila) {
+        $ruta = isset($fila['ruta']) ? $fila['ruta'] : $fila['nombre_archivo'];
+        if (isset($vistos[$ruta])) {
+            continue;
+        }
+        $vistos[$ruta] = true;
+        if (esArchivoApb($fila['nombre_archivo'])) {
+            $apb[] = $fila;
+            continue;
+        }
+        $alcance = isset($fila['alcance']) ? $fila['alcance'] : '';
+        if ($alcance === 'prestador') {
+            $porPrestador[] = $fila;
+        } elseif ($alcance === 'obrasocial' || $alcance === 'obra_social') {
+            $porObra[] = $fila;
+        } else {
+            $generales[] = $fila;
+        }
+    }
+
+    if (count($porPrestador) > 0) {
+        $coseguros = $porPrestador;
+        $nivel = 'prestador';
+    } elseif (count($porObra) > 0) {
+        $coseguros = $porObra;
+        $nivel = 'obrasocial';
+    } else {
+        $coseguros = $generales;
+        $nivel = 'general';
+    }
+
+    return array(
+        'apb' => $apb,
+        'coseguros' => $coseguros,
+        'nivel' => $nivel,
+    );
 }
 
 function agruparCosegurosPorCodigo($filas)
@@ -75,24 +132,26 @@ try {
     asegurarTablaArchivosCoseguros($pdo);
 
     if ($esAdmin) {
-        $generales = $pdo->query(
+        $todos = $pdo->query(
             "SELECT nombre_archivo, ruta, alcance, codigo, fecha
              FROM archivos_coseguros
-             WHERE alcance = 'general'
              ORDER BY fecha DESC, nombre_archivo"
         )->fetchAll();
-        $porObra = $pdo->query(
-            "SELECT nombre_archivo, ruta, alcance, codigo, fecha
-             FROM archivos_coseguros
-             WHERE alcance = 'obrasocial' OR alcance = 'obra_social'
-             ORDER BY codigo, nombre_archivo"
-        )->fetchAll();
-        $porPrestador = $pdo->query(
-            "SELECT nombre_archivo, ruta, alcance, codigo, fecha
-             FROM archivos_coseguros
-             WHERE alcance = 'prestador'
-             ORDER BY codigo, nombre_archivo"
-        )->fetchAll();
+        $vistos = array();
+        foreach ($todos as $fila) {
+            $ruta = isset($fila['ruta']) ? $fila['ruta'] : $fila['nombre_archivo'];
+            if (isset($vistos[$ruta])) {
+                continue;
+            }
+            $vistos[$ruta] = true;
+            if (esArchivoApb($fila['nombre_archivo']) || $fila['alcance'] === 'general') {
+                $generales[] = $fila;
+            } elseif ($fila['alcance'] === 'obrasocial' || $fila['alcance'] === 'obra_social') {
+                $porObra[] = $fila;
+            } elseif ($fila['alcance'] === 'prestador') {
+                $porPrestador[] = $fila;
+            }
+        }
     } else {
         $obras = codigosObraSocialSesion($pdo, $codigoPrestador);
         $sql = "SELECT nombre_archivo, ruta, alcance, codigo, fecha
@@ -112,7 +171,7 @@ try {
         $sql .= ' ORDER BY alcance, codigo, nombre_archivo';
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
-        $visibles = $stmt->fetchAll();
+        $visibles = filtrarCosegurosPrestador($stmt->fetchAll());
     }
 } catch (Exception $e) {
     $error = $e->getMessage();
@@ -147,8 +206,35 @@ try {
             <?php } ?>
         <?php } ?>
     </section>
-<?php } elseif (count($visibles) === 0) { ?>
+<?php } else {
+    $apb = isset($visibles['apb']) ? $visibles['apb'] : array();
+    $coseguros = isset($visibles['coseguros']) ? $visibles['coseguros'] : array();
+    $nivel = isset($visibles['nivel']) ? $visibles['nivel'] : 'general';
+    $globales = $apb;
+    $especificos = array();
+    if ($nivel === 'general') {
+        foreach ($coseguros as $fila) {
+            $globales[] = $fila;
+        }
+    } else {
+        $especificos = $coseguros;
+    }
+    if (count($globales) === 0 && count($especificos) === 0) { ?>
     <div class="bg-white rounded-xl shadow p-8 text-center text-slate-500">No hay archivos de coseguros.</div>
-<?php } else { ?>
-    <?php pintarTarjetasCoseguro($visibles); ?>
-<?php } ?>
+    <?php } else { ?>
+        <?php if (count($globales) > 0) { ?>
+            <section class="mb-8">
+                <h2 class="text-lg font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-200">Archivos Generales / Globales</h2>
+                <?php pintarTarjetasCoseguro($globales); ?>
+            </section>
+        <?php } ?>
+        <?php if (count($especificos) > 0) { ?>
+            <section class="mb-8">
+                <h2 class="text-lg font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-200">
+                    <?php echo $nivel === 'prestador' ? 'Coseguro del prestador' : 'Coseguro de la obra social'; ?>
+                </h2>
+                <?php pintarTarjetasCoseguro($especificos); ?>
+            </section>
+        <?php } ?>
+    <?php }
+} ?>

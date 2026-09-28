@@ -10,7 +10,7 @@ if (!esUsuarioLuis()) {
 }
 
 $categorias = array(
-    'coseguros' => 'Coseguros',
+    'coseguros' => 'Coseguros y APB',
     'normativas' => 'Normativas',
     'contratos' => 'Contratos',
 );
@@ -102,8 +102,10 @@ if ($mensaje !== '') {
     exit;
 }
 
+$extensionesPermitidas = array('pdf', 'xls', 'xlsx', 'doc', 'docx', 'png', 'jpg', 'jpeg');
+
 if (!isset($_FILES['archivo']) || !is_array($_FILES['archivo'])) {
-    $mensaje = 'Seleccione un archivo PDF.';
+    $mensaje = 'Seleccione un archivo.';
 } else {
     $archivo = $_FILES['archivo'];
     $errorCarga = isset($archivo['error']) ? (int) $archivo['error'] : UPLOAD_ERR_NO_FILE;
@@ -111,17 +113,20 @@ if (!isset($_FILES['archivo']) || !is_array($_FILES['archivo'])) {
     $extension = strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION));
 
     if ($errorCarga === UPLOAD_ERR_NO_FILE) {
-        $mensaje = 'Seleccione un archivo PDF.';
+        $mensaje = 'Seleccione un archivo.';
     } elseif ($errorCarga === UPLOAD_ERR_INI_SIZE || $errorCarga === UPLOAD_ERR_FORM_SIZE) {
         $mensaje = 'El archivo supera el tamaño permitido.';
     } elseif ($errorCarga !== UPLOAD_ERR_OK) {
         $mensaje = 'No se pudo recibir el archivo.';
-    } elseif ($extension !== 'pdf' || !is_uploaded_file($archivo['tmp_name'])) {
-        $mensaje = 'Solo se aceptan archivos PDF.';
+    } elseif (!in_array($extension, $extensionesPermitidas, true) || !is_uploaded_file($archivo['tmp_name'])) {
+        $mensaje = 'Solo se aceptan PDF, Excel, Word, PNG o JPG.';
     } else {
+        $extensionOriginal = $extension;
         $nombreOriginal = preg_replace('/[^A-Za-z0-9._ -]/', '_', $nombreOriginal);
-        if ($nombreOriginal === '' || strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION)) !== 'pdf') {
-            $nombreOriginal = 'archivo.pdf';
+        $extension = strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION));
+        if ($nombreOriginal === '' || !in_array($extension, $extensionesPermitidas, true)) {
+            $extension = $extensionOriginal;
+            $nombreOriginal = 'archivo.' . $extension;
         }
 
         $carpetaAlcance = ($alcance === 'general') ? 'general' : codigoCarpetaValido($codigo);
@@ -133,7 +138,7 @@ if (!isset($_FILES['archivo']) || !is_array($_FILES['archivo'])) {
             $destino = $directorio . DIRECTORY_SEPARATOR . $nombreOriginal;
             if (is_file($destino)) {
                 $base = pathinfo($nombreOriginal, PATHINFO_FILENAME);
-                $nombreOriginal = $base . '_' . date('YmdHis') . '.pdf';
+                $nombreOriginal = $base . '_' . date('YmdHis') . '.' . $extension;
                 $destino = $directorio . DIRECTORY_SEPARATOR . $nombreOriginal;
             }
 

@@ -60,6 +60,11 @@ $tipos = array(
     'xls' => 'application/vnd.ms-excel',
     'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'csv' => 'text/csv; charset=UTF-8',
+    'doc' => 'application/msword',
+    'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'png' => 'image/png',
+    'jpg' => 'image/jpeg',
+    'jpeg' => 'image/jpeg',
 );
 $mime = isset($tipos[$extension]) ? $tipos[$extension] : 'application/octet-stream';
 $disposicion = $ver ? 'inline' : 'attachment';

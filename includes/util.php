@@ -327,6 +327,11 @@ function registrarArchivoCoseguro($pdo, $nombre, $ruta, $alcance, $codigo, $fech
     if ($alcance === 'obra_social') {
         $alcance = 'obrasocial';
     }
+    $existe = $pdo->prepare('SELECT id FROM archivos_coseguros WHERE ruta = :ruta LIMIT 1');
+    $existe->execute(array(':ruta' => $ruta));
+    if ($existe->fetch()) {
+        return;
+    }
     $stmt = $pdo->prepare(
         'INSERT INTO archivos_coseguros (nombre_archivo, ruta, alcance, codigo, fecha)
          VALUES (:nombre, :ruta, :alcance, :codigo, :fecha)'

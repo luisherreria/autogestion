@@ -140,7 +140,7 @@ if (!$esAdmin) {
             <input type="hidden" name="action" value="subir">
             <div class="mb-3">
                 <label class="form-label fw-bold">Carpeta / Categoría</label>
-                <input type="text" class="form-control" value="Coseguros" readonly style="background-color: #e2e8f0;">
+                <input type="text" class="form-control" value="Coseguros y APB" readonly style="background-color: #e2e8f0;">
             </div>
             <div class="mb-3">
                 <label class="form-label fw-bold">Alcance</label>

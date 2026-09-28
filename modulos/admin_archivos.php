@@ -12,7 +12,7 @@ if (!esUsuarioLuis()) {
 }
 
 $categorias = array(
-    'coseguros' => 'Coseguros',
+    'coseguros' => 'Coseguros y APB',
     'normativas' => 'Normativas',
     'contratos' => 'Contratos',
 );
@@ -82,8 +82,9 @@ try {
             <p id="aviso-prestador" class="mt-1 text-xs text-slate-500"></p>
         </div>
         <div>
-            <label for="archivo" class="block text-sm font-medium text-slate-700 mb-1">Archivo PDF</label>
-            <input type="file" name="archivo" id="archivo" accept=".pdf,application/pdf" class="block w-full text-sm text-slate-700">
+            <label for="archivo" class="block text-sm font-medium text-slate-700 mb-1">Archivo</label>
+            <input type="file" name="archivo" id="archivo" accept=".pdf,.xls,.xlsx,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg" class="block w-full text-sm text-slate-700">
+            <p class="mt-1 text-xs text-slate-500">PDF, Excel, Word, PNG o JPG.</p>
         </div>
         <button type="submit" class="bg-blue-800 hover:bg-blue-900 text-white rounded-lg px-4 py-2">
             <i class="fa-solid fa-upload mr-1"></i> Subir archivo
