@@ -410,7 +410,25 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                     ],
                     columns: [
                         { data: 'periodo' },
-                        { data: 'prestador' },
+                        {
+                            data: 'prestador',
+                            render: function (dato, tipo, fila) {
+                                var codigo = dato == null ? '' : String(dato);
+                                var nombre = fila.prestador_nombre ? String(fila.prestador_nombre) : '';
+                                if (tipo === 'export' || tipo === 'filter' || tipo === 'sort') {
+                                    return nombre !== '' ? codigo + ' ' + nombre : codigo;
+                                }
+                                if (nombre === '') {
+                                    return codigo;
+                                }
+                                var codigoHtml = codigo.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                                var nombreHtml = nombre.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                                return '<div class="flex flex-col justify-center items-start">'
+                                    + '<span class="font-medium text-gray-900">' + codigoHtml + '</span>'
+                                    + '<span class="text-xs text-gray-500 whitespace-normal leading-tight" style="max-width: 150px;">' + nombreHtml + '</span>'
+                                    + '</div>';
+                            }
+                        },
                         { data: 'obrasocial' },
                         {
                             data: null,
@@ -426,8 +444,22 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                         columnaImporte('liquidado'),
                         columnaImporte('pagado'),
                         columnaImporte('saldo'),
-                        { data: 'recibo', className: 'nowrap' },
-                        { data: 'retencion', className: 'num nowrap' },
+                        { data: 'recibo', className: 'text-center nowrap' },
+                        {
+                            data: 'retencion',
+                            className: 'text-center nowrap',
+                            render: function (dato, tipo, fila) {
+                                var texto = dato == null || dato === '' ? '-' : String(dato);
+                                if (tipo === 'export' || tipo === 'filter' || tipo === 'sort') {
+                                    return texto;
+                                }
+                                if (!fila.retencion_pdf || texto === '-') {
+                                    return texto;
+                                }
+                                var url = '../uploads/pdftango/' + encodeURIComponent(fila.retencion_pdf);
+                                return '<div class="text-center"><a href="' + url + '" target="_blank" class="text-blue-600 hover:text-blue-800 font-semibold" title="Descargar Certificado de Retención"><i class="fa-solid fa-file-pdf text-red-500 mr-1"></i>' + texto.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</a></div>';
+                            }
+                        },
                         {
                             data: 'orden',
                             className: 'nowrap text-center',

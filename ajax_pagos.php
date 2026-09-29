@@ -55,13 +55,14 @@ function mapaPdfsPagos($directorio)
 
 function mapaPdfsTango($directorio)
 {
-    $mapa = array();
+    $pagos = array();
+    $retenciones = array();
     if (!is_dir($directorio)) {
-        return $mapa;
+        return array('pagos' => $pagos, 'retenciones' => $retenciones);
     }
     $rutas = glob(rtrim($directorio, '/\\') . DIRECTORY_SEPARATOR . 'O_P_*.pdf');
     if ($rutas === false) {
-        return $mapa;
+        return array('pagos' => $pagos, 'retenciones' => $retenciones);
     }
     foreach ($rutas as $ruta) {
         $nombre = basename($ruta);
@@ -69,11 +70,16 @@ function mapaPdfsTango($directorio)
             continue;
         }
         $clave = $coincidencia[1];
-        if (!isset($mapa[$clave]) || (strpos($mapa[$clave], ' (2)') !== false && strpos($nombre, ' (2)') === false)) {
-            $mapa[$clave] = $nombre;
+        $esRetencion = stripos($nombre, '_G') !== false;
+        if ($esRetencion) {
+            if (!isset($retenciones[$clave]) || (strpos($retenciones[$clave], ' (2)') !== false && strpos($nombre, ' (2)') === false)) {
+                $retenciones[$clave] = $nombre;
+            }
+        } elseif (!isset($pagos[$clave]) || (strpos($pagos[$clave], ' (2)') !== false && strpos($nombre, ' (2)') === false)) {
+            $pagos[$clave] = $nombre;
         }
     }
-    return $mapa;
+    return array('pagos' => $pagos, 'retenciones' => $retenciones);
 }
 
 function montoPago($valor)
@@ -117,7 +123,7 @@ try {
         || strpos(strtolower($columnas['LIRETEN']['Type']), 'double') !== false
     );
 
-    $sql = 'SELECT LIPERIODO, LIPRESTADO, LIOBRASOC, LISUC, LIFACTURA,
+    $sql = 'SELECT LIPERIODO, LIPRESTADO, LINOMPREST, LIOBRASOC, LISUC, LIFACTURA,
                    LIFACTURAD, LIIMPORTE, LICOSEGURO, LIDEBITADO, LILIQUIDAD,
                    LIPAGADO, LISALDO, LIORDENPAG, LIFECHAPAG';
     if ($campoRecibo !== '') {
@@ -174,14 +180,22 @@ try {
             }
             if ($marcaPago !== false && $marcaPago >= strtotime('2026-01-10')) {
                 $opRellenada = str_pad($ordenPago, 13, '0', STR_PAD_LEFT);
-                if (isset($mapasTango[$opRellenada])) {
-                    $tango = $mapasTango[$opRellenada];
+                if (isset($mapasTango['pagos'][$opRellenada])) {
+                    $tango = $mapasTango['pagos'][$opRellenada];
                 }
+            }
+        }
+        $retencionPdf = '';
+        if ($retencion !== '-' && $ordenPago !== '' && $ordenPago !== '0' && ctype_digit($ordenPago)) {
+            $opRetencion = str_pad($ordenPago, 13, '0', STR_PAD_LEFT);
+            if (isset($mapasTango['retenciones'][$opRetencion])) {
+                $retencionPdf = $mapasTango['retenciones'][$opRetencion];
             }
         }
         $data[] = array(
             'periodo' => $periodo,
             'prestador' => trim((string) $fila['LIPRESTADO']),
+            'prestador_nombre' => trim((string) $fila['LINOMPREST']),
             'obrasocial' => trim((string) $fila['LIOBRASOC']),
             'suc' => $suc,
             'factura' => $factura,
@@ -199,6 +213,7 @@ try {
             'fecha' => $fechaPago,
             'recibo' => $recibo,
             'retencion' => $retencion,
+            'retencion_pdf' => $retencionPdf,
             'pagada' => ($pagado > 0 && $saldo == 0) ? 1 : 0,
         );
     }
