@@ -53,6 +53,29 @@ function mapaPdfsPagos($directorio)
     return array('debitos' => $debitos, 'csn' => $csn);
 }
 
+function mapaPdfsTango($directorio)
+{
+    $mapa = array();
+    if (!is_dir($directorio)) {
+        return $mapa;
+    }
+    $rutas = glob(rtrim($directorio, '/\\') . DIRECTORY_SEPARATOR . 'O_P_*.pdf');
+    if ($rutas === false) {
+        return $mapa;
+    }
+    foreach ($rutas as $ruta) {
+        $nombre = basename($ruta);
+        if (!preg_match('/^O_P_(\d{13})/i', $nombre, $coincidencia)) {
+            continue;
+        }
+        $clave = $coincidencia[1];
+        if (!isset($mapa[$clave]) || (strpos($mapa[$clave], ' (2)') !== false && strpos($nombre, ' (2)') === false)) {
+            $mapa[$clave] = $nombre;
+        }
+    }
+    return $mapa;
+}
+
 function montoPago($valor)
 {
     return formatearImporte($valor);
@@ -78,6 +101,8 @@ try {
     $config = appConfig();
     $directorioPdf = isset($config['dirs']['comprobantes']) ? $config['dirs']['comprobantes'] : dirname(__FILE__) . '/archivos/comprobantes';
     $mapas = mapaPdfsPagos($directorioPdf);
+    $directorioTango = dirname(__FILE__) . '/../uploads/pdftango';
+    $mapasTango = mapaPdfsTango($directorioTango);
 
     $pdo = Database::getConnection();
     $columnas = array();
@@ -136,6 +161,24 @@ try {
                 $retencion = textoOGuion($fila[$campoRetencion]);
             }
         }
+        $ordenPago = trim((string) $fila['LIORDENPAG']);
+        if (strpos($ordenPago, '.') !== false) {
+            $ordenPago = substr($ordenPago, 0, strpos($ordenPago, '.'));
+        }
+        $tango = '';
+        if ($ordenPago !== '' && $ordenPago !== '0' && ctype_digit($ordenPago)) {
+            $fechaCruda = trim((string) $fila['LIFECHAPAG']);
+            $marcaPago = false;
+            if ($fechaCruda !== '' && strpos($fechaCruda, '0000-00-00') !== 0) {
+                $marcaPago = strtotime(substr($fechaCruda, 0, 10));
+            }
+            if ($marcaPago !== false && $marcaPago >= strtotime('2026-01-10')) {
+                $opRellenada = str_pad($ordenPago, 13, '0', STR_PAD_LEFT);
+                if (isset($mapasTango[$opRellenada])) {
+                    $tango = $mapasTango[$opRellenada];
+                }
+            }
+        }
         $data[] = array(
             'periodo' => $periodo,
             'prestador' => trim((string) $fila['LIPRESTADO']),
@@ -151,7 +194,8 @@ try {
             'liquidado' => montoPago($fila['LILIQUIDAD']),
             'pagado' => montoPago($fila['LIPAGADO']),
             'saldo' => montoPago($saldo),
-            'orden' => trim((string) $fila['LIORDENPAG']),
+            'orden' => $ordenPago,
+            'tango' => $tango,
             'fecha' => $fechaPago,
             'recibo' => $recibo,
             'retencion' => $retencion,

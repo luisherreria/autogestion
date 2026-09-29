@@ -428,7 +428,21 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                         columnaImporte('saldo'),
                         { data: 'recibo', className: 'nowrap' },
                         { data: 'retencion', className: 'num nowrap' },
-                        { data: 'orden', className: 'nowrap' },
+                        {
+                            data: 'orden',
+                            className: 'nowrap text-center',
+                            render: function (dato, tipo, fila) {
+                                var numero = dato == null ? '' : String(dato);
+                                if (tipo === 'export' || tipo === 'filter' || tipo === 'sort') {
+                                    return numero;
+                                }
+                                if (!fila.tango) {
+                                    return numero;
+                                }
+                                var url = '../uploads/pdftango/' + encodeURIComponent(fila.tango);
+                                return '<div class="whitespace-nowrap text-center"><a href="' + url + '" target="_blank" class="text-blue-600 hover:text-blue-800 font-semibold" title="Descargar Comprobante de Pago"><i class="fa-solid fa-file-pdf text-red-500 mr-1"></i>' + numero.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</a></div>';
+                            }
+                        },
                         { data: 'fecha', className: 'nowrap' },
                         {
                             data: null,
