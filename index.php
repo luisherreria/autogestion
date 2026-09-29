@@ -13,14 +13,23 @@ $secciones = array(
     'contratos' => array('titulo' => 'Contratos', 'icono' => 'fa-file-contract'),
     'pagos' => array('titulo' => 'Pagos Realizados', 'icono' => 'fa-money-bill-wave'),
     'empadronamiento' => array('titulo' => 'Empadronamiento Afiliados', 'icono' => 'fa-id-card', 'permiso' => 'ver_empadronamiento'),
+    'perfil' => array('titulo' => 'Mi perfil', 'icono' => 'fa-gear', 'oculto' => true, 'libre' => true),
     'admin_archivos' => array('titulo' => 'Gestión de Archivos', 'icono' => 'fa-cloud-arrow-up', 'solo_admin' => true),
     'auditoria_vista' => array('titulo' => 'Control de Auditoría', 'icono' => 'fa-clipboard-list', 'solo_admin' => true),
     'admin_permisos' => array('titulo' => 'Gestión de Permisos', 'icono' => 'fa-user-lock', 'solo_admin' => true),
 );
 
-$seccion = isset($_GET['seccion']) ? $_GET['seccion'] : 'autorizaciones';
+if (!empty($GLOBALS['forzarSeccion'])) {
+    $seccion = $GLOBALS['forzarSeccion'];
+} else {
+    $seccion = isset($_GET['seccion']) ? $_GET['seccion'] : 'autorizaciones';
+}
 if (!isset($secciones[$seccion])) {
     $seccion = 'autorizaciones';
+}
+if ($seccion === 'perfil' && empty($GLOBALS['renderPerfil'])) {
+    header('Location: perfil.php');
+    exit;
 }
 
 $nombre = isset($_SESSION['nombre']) ? $_SESSION['nombre'] : '';
@@ -39,7 +48,7 @@ try {
 
 $soloAdmin = !empty($secciones[$seccion]['solo_admin']);
 $clavePermisoActual = isset($secciones[$seccion]['permiso']) ? $secciones[$seccion]['permiso'] : $seccion;
-$puedeVer = $esAdmin || (!$soloAdmin && tienePermiso($clavePermisoActual));
+$puedeVer = $esAdmin || !empty($secciones[$seccion]['libre']) || (!$soloAdmin && tienePermiso($clavePermisoActual));
 if (!$puedeVer) {
     if (!isset($_GET['seccion']) || $_GET['seccion'] === '') {
         foreach ($secciones as $claveAlternativa => $itemAlternativo) {
@@ -198,7 +207,10 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
     </header>
 
     <aside class="fixed top-16 left-0 bottom-0 w-64 bg-slate-900 text-slate-200 z-40 overflow-y-auto">
-        <div class="px-4 py-6 border-b border-slate-700 text-center">
+        <div class="relative px-4 py-6 border-b border-slate-700 text-center">
+            <a href="perfil.php" title="Mi perfil" class="absolute top-3 right-3 text-gray-400 hover:text-white">
+                <i class="fa-solid fa-gear"></i>
+            </a>
             <div class="text-3xl text-blue-300 mb-2"><i class="fa-solid fa-user-circle"></i></div>
             <div class="font-medium text-white"><?php echo h($nombre); ?></div>
             <div class="text-xs text-slate-400 mt-1">
@@ -208,6 +220,9 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
         <nav class="py-3">
             <?php foreach ($secciones as $clave => $item) {
                 if (!empty($item['solo_admin'])) {
+                    continue;
+                }
+                if (!empty($item['oculto'])) {
                     continue;
                 }
                 $clavePermiso = isset($item['permiso']) ? $item['permiso'] : $clave;
@@ -254,7 +269,13 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
         <?php if ($accesoDenegado) { ?>
             <div class="bg-white rounded-xl shadow p-8 text-center text-slate-600">No tiene permiso para ver esta sección.</div>
         <?php } else { ?>
-            <?php require dirname(__FILE__) . '/modulos/' . $seccion . '.php'; ?>
+            <?php
+            if ($seccion === 'perfil') {
+                mostrarFormularioPerfil();
+            } else {
+                require dirname(__FILE__) . '/modulos/' . $seccion . '.php';
+            }
+            ?>
         <?php } ?>
     </main>
 
