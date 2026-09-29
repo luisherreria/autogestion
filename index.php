@@ -70,7 +70,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
-    <?php if ($seccion === 'auditoria_vista' || $seccion === 'pagos' || $seccion === 'obras_sociales') { ?>
+    <?php if ($seccion === 'auditoria_vista' || $seccion === 'pagos' || $seccion === 'obras_sociales' || $seccion === 'autorizaciones') { ?>
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
     <?php } ?>
     <style>
@@ -85,13 +85,98 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
         #tablaPagos_wrapper .dt-buttons,
         #tablaObrasSociales_wrapper .dt-buttons { margin: 0 0 0.75rem; }
         #tablaPagos_wrapper .dt-buttons .dt-button,
-        #tablaObrasSociales_wrapper .dt-buttons .dt-button {
+        #tablaObrasSociales_wrapper .dt-buttons .dt-button,
+        #tablaAutorizaciones_wrapper .dt-buttons .dt-button {
             background: #1e40af;
             color: #fff;
             border: 0;
             border-radius: 0.375rem;
             padding: 0.25rem 0.75rem;
             margin-right: 0.35rem;
+        }
+        #tablaAutorizaciones_wrapper .controles-autorizaciones {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.25rem;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+        }
+        #tablaAutorizaciones_wrapper .controles-autorizaciones .dataTables_length,
+        #tablaAutorizaciones_wrapper .controles-autorizaciones .dt-buttons,
+        #tablaAutorizaciones_wrapper .controles-autorizaciones .dataTables_filter {
+            float: none;
+            margin: 0;
+        }
+        #tablaAutorizaciones_wrapper .controles-autorizaciones .dt-buttons {
+            display: inline-flex;
+            align-items: center;
+        }
+        #tablaAutorizaciones_wrapper .controles-autorizaciones .dataTables_length {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            white-space: nowrap;
+        }
+        #tablaAutorizaciones_wrapper .controles-medio {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+        #tablaAutorizaciones_wrapper .dataTables_filter {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        #grupo-estado-autorizaciones {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: #475569;
+            font-size: 0.875rem;
+        }
+        #filtroEstadoAutorizaciones,
+        #tablaAutorizaciones_wrapper .dataTables_filter input,
+        #tablaAutorizaciones_wrapper .dataTables_length select {
+            border: 1px solid #cbd5e1;
+            border-radius: 0.5rem;
+            padding: 0.35rem 0.6rem;
+            background: #fff;
+        }
+        #tablaAutorizaciones th:nth-child(3),
+        #tablaAutorizaciones td:nth-child(3) {
+            width: 220px;
+            max-width: 240px;
+            white-space: normal;
+        }
+        #tablaAutorizaciones {
+            border-collapse: separate !important;
+            border-spacing: 0;
+            width: 100% !important;
+        }
+        #tablaAutorizaciones thead th {
+            background: #f8fafc;
+            color: #475569;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.75rem 0.85rem;
+        }
+        #tablaAutorizaciones tbody td {
+            padding: 0.7rem 0.85rem;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+            color: #1e293b;
+        }
+        #tablaAutorizaciones tbody tr:hover td {
+            background: #f8fafc;
+        }
+        #tablaAutorizaciones_wrapper .dataTables_info,
+        #tablaAutorizaciones_wrapper .dataTables_paginate {
+            margin-top: 0.75rem;
         }
     </style>
 </head>
@@ -175,7 +260,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-    <?php if ($seccion === 'auditoria_vista' || $seccion === 'pagos' || $seccion === 'obras_sociales') { ?>
+    <?php if ($seccion === 'auditoria_vista' || $seccion === 'pagos' || $seccion === 'obras_sociales' || $seccion === 'autorizaciones') { ?>
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
@@ -184,6 +269,20 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
     <?php } ?>
     <script>
+        function columnaImporte(campo) {
+            return {
+                data: campo,
+                className: 'num text-right',
+                render: function (dato, tipo) {
+                    if (tipo === 'sort' || tipo === 'type') {
+                        var limpio = String(dato == null ? '' : dato).replace(/\$/g, '').replace(/\s/g, '').replace(/\./g, '').replace(',', '.');
+                        var numero = parseFloat(limpio);
+                        return isNaN(numero) ? 0 : numero;
+                    }
+                    return dato;
+                }
+            };
+        }
         $(function () {
             var idiomaTabla = {
                 search: 'Buscar:',
@@ -207,7 +306,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                 $('#tablaObrasSociales').DataTable({
                     pageLength: 25,
                     lengthMenu: [[25, 50, 100, -1], [25, 50, 100, 'Todos']],
-                    order: [],
+                    order: [[0, 'asc']],
                     dom: 'lBfrtip',
                     buttons: [
                         { extend: 'excel', text: 'Excel' },
@@ -257,13 +356,13 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                         { data: 'obrasocial' },
                         { data: 'suc' },
                         { data: 'factura' },
-                        { data: 'facturado', className: 'num' },
-                        { data: 'importe', className: 'num' },
-                        { data: 'coseguro', className: 'num' },
-                        { data: 'debitado', className: 'num' },
-                        { data: 'liquidado', className: 'num' },
-                        { data: 'pagado', className: 'num' },
-                        { data: 'saldo', className: 'num' },
+                        columnaImporte('facturado'),
+                        columnaImporte('importe'),
+                        columnaImporte('coseguro'),
+                        columnaImporte('debitado'),
+                        columnaImporte('liquidado'),
+                        columnaImporte('pagado'),
+                        columnaImporte('saldo'),
                         { data: null, defaultContent: '-', render: function () { return '-'; } },
                         { data: null, defaultContent: '-', className: 'num', render: function () { return '-'; } },
                         {
@@ -394,6 +493,40 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                     });
                 });
             }
+            if ($('#tablaAutorizaciones').length && $.fn.dataTable) {
+                var idiomaAutorizaciones = $.extend({}, idiomaTabla, {
+                    emptyTable: 'No hay autorizaciones en los últimos 90 días',
+                    info: 'Mostrando _START_ a _END_ de _TOTAL_ órdenes de los últimos 90 días',
+                    infoEmpty: 'Sin órdenes en los últimos 90 días',
+                    infoFiltered: '(filtrado de _MAX_ órdenes de los últimos 90 días)'
+                });
+                var tablaAutorizaciones = $('#tablaAutorizaciones').DataTable({
+                    pageLength: 25,
+                    lengthMenu: [[25, 50, 100, 500, -1], [25, 50, 100, 500, 'Todas']],
+                    order: [[1, 'desc']],
+                    autoWidth: false,
+                    columnDefs: [
+                        { targets: 0, width: '120px' },
+                        { targets: 1, width: '120px' },
+                        { targets: 2, width: '220px' },
+                        { targets: 3, width: '140px' },
+                        { targets: 4, width: '150px', orderable: false }
+                    ],
+                    dom: "<'controles-autorizaciones'B<'controles-medio'lf>r>tip",
+                    buttons: [
+                        { extend: 'excel', text: 'Excel' },
+                        { extend: 'pdf', text: 'PDF', orientation: 'landscape', pageSize: 'A4' },
+                        { extend: 'print', text: 'Imprimir' }
+                    ],
+                    language: idiomaAutorizaciones
+                });
+                var medioAutorizaciones = $('#tablaAutorizaciones_wrapper .controles-medio');
+                medioAutorizaciones.prepend($('#tablaAutorizaciones_length'));
+                $('#tablaAutorizaciones_filter').before($('#grupo-estado-autorizaciones'));
+                $('#filtroEstadoAutorizaciones').on('change', function () {
+                    tablaAutorizaciones.column(3).search($(this).val(), false, false).draw();
+                });
+            }
             if ($('#tabla-auditoria').length) {
                 $('#tabla-auditoria').DataTable({
                     pageLength: 25,
@@ -454,18 +587,13 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
 
     <script>
         function actualizarReloj() {
-            const ahora = new Date();
-            
-            // Opciones para la fecha (ej: Viernes, 25 de septiembre de 2026)
-            const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            let fecha = ahora.toLocaleDateString('es-ES', opcionesFecha);
-            // Capitalizar la primera letra
-            fecha = fecha.charAt(0).toUpperCase() + fecha.slice(1);
-            
-            // Hora en formato 24h
-            const hora = ahora.toLocaleTimeString('es-ES', { hour12: false });
-            
-            document.getElementById('reloj-texto').innerHTML = `${hora} | ${fecha}`;
+            var ahora = new Date();
+            function dosDigitos(numero) {
+                return (numero < 10 ? '0' : '') + numero;
+            }
+            var fecha = dosDigitos(ahora.getDate()) + '/' + dosDigitos(ahora.getMonth() + 1) + '/' + ahora.getFullYear();
+            var hora = dosDigitos(ahora.getHours()) + ':' + dosDigitos(ahora.getMinutes()) + ':' + dosDigitos(ahora.getSeconds());
+            document.getElementById('reloj-texto').innerHTML = hora + ' | ' + fecha;
         }
         
         // Actualizar cada segundo

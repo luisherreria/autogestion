@@ -55,7 +55,7 @@ function mapaPdfsPagos($directorio)
 
 function montoPago($valor)
 {
-    return number_format((float) $valor, 2, '.', '');
+    return formatearImporte($valor);
 }
 
 $esAdmin = isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin';

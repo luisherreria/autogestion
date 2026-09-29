@@ -16,7 +16,8 @@ $sql = "SELECT TRIM(TACODIGO) AS codigo,
                TAFECHAFIN
         FROM OBRASOC
         WHERE TAFECHAFIN >= (CURDATE() - INTERVAL 180 DAY)
-        ORDER BY TAFECHAFIN DESC, TADESCRIP ASC";
+          AND UPPER(TRIM(TACODIGO)) <> 'OSSEG U'
+        ORDER BY TRIM(TACODIGO) ASC";
 
 try {
     $pdo = Database::getConnection();

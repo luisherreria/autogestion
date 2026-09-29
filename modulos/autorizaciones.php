@@ -6,114 +6,144 @@ if (!defined('PORTAL_AUTOGESTION')) {
     exit;
 }
 
-$config = appConfig();
-$directorio = $config['dirs']['autorizaciones'];
-$esAdmin = !empty($_SESSION['es_admin']);
+$esAdmin = isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin';
 $codigo = isset($_SESSION['codigo']) ? trim($_SESSION['codigo']) : '';
 $filas = array();
 $error = '';
+$desde = date('Y-m-d', strtotime('-90 days'));
+$desdeTexto = date('d/m/Y', strtotime($desde));
+$hastaTexto = date('d/m/Y');
 
-$sqlEstado = "CASE
-        WHEN UPPER(TRIM(IFNULL(COBORRADO, ''))) IN ('T', '1', 'S') THEN 'BORRADA'
-        WHEN UPPER(TRIM(IFNULL(CORECHAZA, ''))) NOT IN ('', '0', 'F') THEN 'RECHAZADA'
-        ELSE 'AUTORIZADA'
-    END";
-
-$sql = "SELECT numero,
-        MAX(fecha) AS fecha,
-        MAX(paciente) AS paciente,
-        CASE MAX(CASE estado
-            WHEN 'BORRADA' THEN 3
-            WHEN 'RECHAZADA' THEN 2
-            ELSE 1
-        END)
-            WHEN 3 THEN 'BORRADA'
-            WHEN 2 THEN 'RECHAZADA'
-            ELSE 'AUTORIZADA'
-        END AS estado
-    FROM (
-        SELECT TRIM(CONUMERO) AS numero,
-               COFECHA AS fecha,
-               TRIM(CONOMPAC) AS paciente,
-               TRIM(COPRESTADO) AS prestador,
-               {$sqlEstado} AS estado
-        FROM autoriza
-        UNION ALL
-        SELECT TRIM(CONUMERO) AS numero,
-               COFECHA AS fecha,
-               TRIM(CONOMPAC) AS paciente,
-               TRIM(COPRESTADO) AS prestador,
-               {$sqlEstado} AS estado
-        FROM sanauto
-    ) ordenes_prestador";
-
-$parametros = array();
+$sqlAmbulatorio = "SELECT auto_id, CONUMERO AS conumero, COFECHA AS cofecha, CONOMPAC AS conompac, COESTADO AS coestado, CONROAUTO AS conroauto, COMEDICO AS codigo_prestador, 'AMBULATORIO' AS origen
+        FROM ordenes
+        WHERE COFECHA >= :desde_ambu
+          AND COFECHA < :hasta_ambu
+          AND COESTADO IN ('AUTORIZADA', 'RECHAZADA')";
+$sqlSanatorial = "SELECT auto_id, conumero, cofecha, conompac, coestado, conroauto, comedico AS codigo_prestador, 'SANATORIAL' AS origen
+        FROM sanorden
+        WHERE cofecha >= :desde_sano
+          AND cofecha < :hasta_sano
+          AND coestado IN ('AUTORIZADA', 'RECHAZADA')";
+$manana = date('Y-m-d', strtotime('+1 day'));
+$parametros = array(
+    ':desde_ambu' => $desde,
+    ':hasta_ambu' => $manana,
+    ':desde_sano' => $desde,
+    ':hasta_sano' => $manana,
+);
 if (!$esAdmin) {
-    $sql .= ' WHERE TRIM(prestador) = :codigo';
+    $sqlAmbulatorio .= ' AND COMEDICO = :codigo';
+    $sqlSanatorial .= ' AND comedico = :codigo_sano';
     $parametros[':codigo'] = $codigo;
+    $parametros[':codigo_sano'] = $codigo;
 }
-
-$sql .= ' GROUP BY numero ORDER BY fecha DESC, numero DESC';
+$sql = $sqlAmbulatorio . ' UNION ALL ' . $sqlSanatorial . ' ORDER BY cofecha DESC, conumero DESC';
 
 try {
     $pdo = Database::getConnection();
     $stmt = $pdo->prepare($sql);
     $stmt->execute($parametros);
-    $filas = $stmt->fetchAll();
+    foreach ($stmt->fetchAll() as $fila) {
+        $fechaFila = substr(trim((string) $fila['cofecha']), 0, 10);
+        if ($fechaFila >= $desde && $fechaFila < $manana) {
+            $filas[] = $fila;
+        }
+    }
 } catch (Exception $e) {
     $error = $e->getMessage();
 }
 
-function claseEstado($estado)
+function claseEstadoAutorizacion($estado)
 {
+    if ($estado === 'AUTORIZADA') {
+        return 'bg-green-100 text-green-800';
+    }
     if ($estado === 'RECHAZADA') {
         return 'bg-red-100 text-red-800';
     }
-    if ($estado === 'BORRADA') {
-        return 'bg-slate-200 text-slate-700';
+    return 'bg-slate-100 text-slate-700';
+}
+
+function rutaPdfAutorizacion($fila)
+{
+    $estado = isset($fila['coestado']) ? trim($fila['coestado']) : '';
+    $numero = isset($fila['conumero']) ? trim($fila['conumero']) : '';
+    $auto = isset($fila['conroauto']) ? trim($fila['conroauto']) : '';
+
+    if ($estado === 'AUTORIZADA' && $auto !== '' && $auto !== '0') {
+        return '../uploads/pdf/' . $auto . '.pdf';
     }
-    return 'bg-green-100 text-green-800';
+    if ($estado === 'AUTORIZADA' && ($auto === '' || $auto === '0')) {
+        return '../uploads/pdf/orden' . $numero . '.pdf';
+    }
+    if ($estado === 'RECHAZADA') {
+        $origen = isset($fila['origen']) ? trim((string) $fila['origen']) : '';
+        return 'descargar_rechazo.php?orden=' . rawurlencode($numero)
+            . '&estado=RECHAZADA&origen=' . rawurlencode($origen);
+    }
+    return '';
 }
 ?>
 <?php if ($error !== '') { ?>
     <div class="rounded-lg bg-red-50 text-red-700 px-4 py-3 mb-4 text-sm"><?php echo h($error); ?></div>
 <?php } ?>
-<div class="bg-white rounded-xl shadow overflow-x-auto p-4">
-    <table id="tabla-datos" class="display w-full text-sm">
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <p class="text-sm font-medium text-slate-800">Últimos 90 días</p>
+            <p class="text-xs text-slate-500 mt-0.5">Del <?php echo h($desdeTexto); ?> al <?php echo h($hastaTexto); ?> · <?php echo count($filas); ?> órdenes</p>
+        </div>
+    </div>
+    <div class="p-4">
+    <div id="grupo-estado-autorizaciones">
+        <label for="filtroEstadoAutorizaciones">Estado</label>
+        <select id="filtroEstadoAutorizaciones">
+            <option value="">Todas</option>
+            <option value="AUTORIZADA">Autorizadas</option>
+            <option value="RECHAZADA">Rechazadas</option>
+        </select>
+    </div>
+    <table id="tablaAutorizaciones" class="display w-full text-sm">
         <thead>
             <tr>
                 <th>ID</th>
                 <th>Fecha</th>
                 <th>Paciente</th>
                 <th>Estado</th>
-                <th>Acción</th>
+                <th>Descargar Autorización</th>
             </tr>
         </thead>
         <tbody>
             <?php foreach ($filas as $fila) {
-                $pdf = buscarArchivo($directorio, candidatosPdfNumero($fila['numero']));
+                $estado = trim((string) $fila['coestado']);
+                $numero = trim($fila['conumero']);
+                $rutaPdf = rutaPdfAutorizacion($fila);
                 ?>
                 <tr>
-                    <td><?php echo h($fila['numero']); ?></td>
-                    <td><?php echo h(formatearFecha($fila['fecha'])); ?></td>
-                    <td><?php echo h($fila['paciente']); ?></td>
+                    <td><?php echo h($numero); ?></td>
+                    <td data-order="<?php echo h(substr(trim((string) $fila['cofecha']), 0, 10)); ?>"><?php echo h(formatearFecha($fila['cofecha'])); ?></td>
+                    <td><?php echo h(trim((string) $fila['conompac'])); ?></td>
                     <td>
-                        <span class="inline-block rounded-full px-2 py-1 text-xs font-medium <?php echo claseEstado($fila['estado']); ?>">
-                            <?php echo h($fila['estado']); ?>
-                        </span>
+                        <?php if ($estado !== '') { ?>
+                            <span class="inline-block rounded-full px-2 py-1 text-xs font-medium <?php echo claseEstadoAutorizacion($estado); ?>">
+                                <?php echo h($estado); ?>
+                            </span>
+                        <?php } ?>
                     </td>
-                    <td>
-                        <?php if ($pdf !== '') { ?>
-                            <a href="<?php echo h(urlDescarga('autorizaciones', $pdf, true)); ?>" target="_blank" rel="noopener"
-                               class="inline-flex items-center gap-1 text-red-700 hover:text-red-900" title="Ver PDF">
-                                <i class="fa-solid fa-file-pdf text-lg"></i>
+                    <td class="text-center">
+                        <?php if ($rutaPdf !== '') { ?>
+                            <a href="<?php echo h($rutaPdf); ?>" target="_blank" rel="noopener"
+                               class="inline-flex items-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-medium px-3 py-1.5" title="Descargar autorización">
+                                <i class="fa-solid fa-file-pdf"></i>
+                                PDF
                             </a>
                         <?php } else { ?>
-                            <span class="text-slate-400">No disponible</span>
+                            <span class="text-slate-400">-</span>
                         <?php } ?>
                     </td>
                 </tr>
             <?php } ?>
         </tbody>
     </table>
+    </div>
 </div>

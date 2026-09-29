@@ -112,6 +112,8 @@ window.datosEmpadronamiento = {
             html += '<div><dt class="text-slate-500">Nombre completo</dt><dd class="font-medium text-slate-900">' + escapar(afiliado.nombre) + '</dd></div>';
             html += '<div><dt class="text-slate-500">DNI</dt><dd class="font-medium text-slate-900">' + escapar(afiliado.dni) + '</dd></div>';
             html += '<div><dt class="text-slate-500">Nro carnet</dt><dd class="font-medium text-slate-900">' + escapar(afiliado.carnet) + '</dd></div>';
+            html += '<div><dt class="text-slate-500">Obra social</dt><dd class="font-medium text-slate-900">' + escapar(afiliado.obra_social) + '</dd></div>';
+            html += '<div><dt class="text-slate-500">Plan</dt><dd class="font-medium text-slate-900">' + escapar(afiliado.plan) + '</dd></div>';
             html += '</dl>';
             html += '<form id="form-enviar-padron" class="border-t border-slate-200 pt-4">';
             html += '<input type="hidden" name="estado_padron" value="activo">';
@@ -120,6 +122,7 @@ window.datosEmpadronamiento = {
             html += '<input type="hidden" name="dni" value="' + escapar(afiliado.dni) + '">';
             html += '<input type="hidden" name="carnet" value="' + escapar(afiliado.carnet) + '">';
             html += '<input type="hidden" name="obra_social" value="' + escapar(afiliado.obra_social) + '">';
+            html += '<input type="hidden" name="plan" value="' + escapar(afiliado.plan) + '">';
             html += camposContacto('Enviar Verificación de Empadronamiento', 'bg-blue-800 hover:bg-blue-900', true);
             html += '</form></div>';
             $('#resultado-padron').html(html);

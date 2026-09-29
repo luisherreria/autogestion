@@ -30,8 +30,11 @@ try {
     $sql = "SELECT TRIM(u.NOMBRE) AS nombre,
                    TRIM(CAST(u.NRODOC AS CHAR)) AS dni,
                    TRIM(u.NROAFILIAD) AS carnet,
-                   TRIM(u.OBRASOC) AS obra_social
-            FROM unicos u";
+                   TRIM(u.OBRASOC) AS obra_social,
+                   TRIM(s.TADESCRIP) AS obra_nombre,
+                   TRIM(u.PLAN) AS plan
+            FROM unicos u
+            LEFT JOIN OBRASOC s ON TRIM(u.OBRASOC) = TRIM(s.TACODIGO)";
     $params = array(
         ':carnet' => $busqueda,
         ':itrom' => $busqueda,
@@ -61,13 +64,23 @@ try {
     $fila = $stmt->fetch();
 
     if ($fila) {
+        $codigoObra = trim((string) $fila['obra_social']);
+        $nombreObra = trim((string) $fila['obra_nombre']);
+        if ($nombreObra !== '' && strcasecmp($nombreObra, $codigoObra) !== 0) {
+            $obraTexto = $nombreObra . ' (' . $codigoObra . ')';
+        } elseif ($nombreObra !== '') {
+            $obraTexto = $nombreObra;
+        } else {
+            $obraTexto = $codigoObra;
+        }
         echo json_encode(array(
             'status' => 'activo',
             'afiliado' => array(
                 'nombre' => $fila['nombre'],
                 'dni' => $fila['dni'],
                 'carnet' => $fila['carnet'],
-                'obra_social' => $fila['obra_social'],
+                'obra_social' => $obraTexto,
+                'plan' => trim((string) $fila['plan']),
             ),
             'institucion' => $institucion,
             'telefono' => $telefono,

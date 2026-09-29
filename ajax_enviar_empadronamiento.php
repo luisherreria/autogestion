@@ -28,6 +28,7 @@ $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
 $dni = isset($_POST['dni']) ? trim($_POST['dni']) : '';
 $carnet = isset($_POST['carnet']) ? trim($_POST['carnet']) : '';
 $obraSocial = isset($_POST['obra_social']) ? trim($_POST['obra_social']) : '';
+$plan = isset($_POST['plan']) ? trim($_POST['plan']) : '';
 $busqueda = isset($_POST['busqueda']) ? trim($_POST['busqueda']) : '';
 $consulta = isset($_POST['consulta']) ? trim($_POST['consulta']) : '';
 $internacion = isset($_POST['internacion']) ? trim($_POST['internacion']) : '';
@@ -62,6 +63,7 @@ $reemplazos = array(
     '{{dni}}' => $dni,
     '{{carnet}}' => $carnet,
     '{{obra_social}}' => $obraSocial,
+    '{{plan}}' => $plan,
     '{{busqueda}}' => $busqueda,
     '{{consulta}}' => $consulta,
     '{{internacion}}' => $internacionTexto,
@@ -253,7 +255,7 @@ function asegurarPlantillasEmpadronamiento($pdo)
             'codigo' => 'EMPADRONAMIENTO_ACTIVO',
             'nombre' => 'Empadronamiento activo',
             'asunto' => 'Verificación de empadronamiento - {{institucion}}',
-            'cuerpo' => "Verificación de empadronamiento\n\nInstitución: {{institucion}}\nCódigo: {{codigo}}\nTeléfono: {{telefono}}\nAfiliado: {{nombre}}\nDNI: {{dni}}\nCarnet: {{carnet}}\nObra social: {{obra_social}}\nInternación: {{internacion}}\nBúsqueda: {{busqueda}}\n",
+            'cuerpo' => "Verificación de empadronamiento\n\nInstitución: {{institucion}}\nCódigo: {{codigo}}\nTeléfono: {{telefono}}\nAfiliado: {{nombre}}\nDNI: {{dni}}\nCarnet: {{carnet}}\nObra social: {{obra_social}}\nPlan: {{plan}}\nInternación: {{internacion}}\nBúsqueda: {{busqueda}}\n",
         ),
         array(
             'codigo' => 'EMPADRONAMIENTO_FUERA_PADRON',
@@ -294,4 +296,10 @@ function asegurarPlantillasEmpadronamiento($pdo)
             ':metodo' => 'SMTP',
         ));
     }
+    $pdo->exec(
+        "UPDATE t_plantillas_emails
+         SET cuerpo = REPLACE(cuerpo, 'Obra social: {{obra_social}}', 'Obra social: {{obra_social}}\nPlan: {{plan}}')
+         WHERE codigo = 'EMPADRONAMIENTO_ACTIVO'
+           AND cuerpo NOT LIKE '%{{plan}}%'"
+    );
 }
