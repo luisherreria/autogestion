@@ -293,7 +293,7 @@ window.datosEmpadronamiento = {
                 setTimeout(function () {
                     $('#form-buscar-padron')[0].reset();
                     $('#resultado-padron').empty();
-                    aviso('ok', 'Correo enviado exitosamente.');
+                    $('#aviso-empadronamiento').addClass('hidden').text('');
                 }, 350);
             }).fail(function () {
                 finProgreso(false);
