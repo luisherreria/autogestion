@@ -58,6 +58,15 @@ function montoPago($valor)
     return formatearImporte($valor);
 }
 
+function textoOGuion($valor)
+{
+    $texto = trim((string) $valor);
+    if ($texto === '' || $texto === '0') {
+        return '-';
+    }
+    return $texto;
+}
+
 $esAdmin = isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin';
 $codigoPrestador = isset($_SESSION['codigo']) ? trim($_SESSION['codigo']) : '';
 if (!$esAdmin && !tienePermiso('pagos')) {
@@ -71,10 +80,28 @@ try {
     $mapas = mapaPdfsPagos($directorioPdf);
 
     $pdo = Database::getConnection();
+    $columnas = array();
+    foreach ($pdo->query('SHOW COLUMNS FROM liquida') as $columna) {
+        $columnas[strtoupper($columna['Field'])] = $columna;
+    }
+    $campoRecibo = isset($columnas['LINRORECIB']) ? $columnas['LINRORECIB']['Field'] : '';
+    $campoRetencion = isset($columnas['LIRETEN']) ? $columnas['LIRETEN']['Field'] : '';
+    $retencionEsImporte = $campoRetencion !== '' && (
+        strpos(strtolower($columnas['LIRETEN']['Type']), 'decimal') !== false
+        || strpos(strtolower($columnas['LIRETEN']['Type']), 'float') !== false
+        || strpos(strtolower($columnas['LIRETEN']['Type']), 'double') !== false
+    );
+
     $sql = 'SELECT LIPERIODO, LIPRESTADO, LIOBRASOC, LISUC, LIFACTURA,
                    LIFACTURAD, LIIMPORTE, LICOSEGURO, LIDEBITADO, LILIQUIDAD,
-                   LIPAGADO, LISALDO, LIORDENPAG, LIFECHAPAG
-            FROM liquida';
+                   LIPAGADO, LISALDO, LIORDENPAG, LIFECHAPAG';
+    if ($campoRecibo !== '') {
+        $sql .= ', ' . $campoRecibo;
+    }
+    if ($campoRetencion !== '') {
+        $sql .= ', ' . $campoRetencion;
+    }
+    $sql .= ' FROM liquida';
     $parametros = array();
     if (!$esAdmin) {
         $sql .= ' WHERE TRIM(LIPRESTADO) = :codigo';
@@ -96,6 +123,19 @@ try {
         if ($fechaPago === '') {
             $fechaPago = '/ /';
         }
+        $recibo = '-';
+        if ($campoRecibo !== '') {
+            $recibo = textoOGuion($fila[$campoRecibo]);
+        }
+        $retencion = '-';
+        if ($campoRetencion !== '') {
+            if ($retencionEsImporte) {
+                $importeRetencion = trim((string) $fila[$campoRetencion]);
+                $retencion = ($importeRetencion === '' || (float) $importeRetencion == 0) ? '-' : montoPago($fila[$campoRetencion]);
+            } else {
+                $retencion = textoOGuion($fila[$campoRetencion]);
+            }
+        }
         $data[] = array(
             'periodo' => $periodo,
             'prestador' => trim((string) $fila['LIPRESTADO']),
@@ -113,6 +153,8 @@ try {
             'saldo' => montoPago($saldo),
             'orden' => trim((string) $fila['LIORDENPAG']),
             'fecha' => $fechaPago,
+            'recibo' => $recibo,
+            'retencion' => $retencion,
             'pagada' => ($pagado > 0 && $saldo == 0) ? 1 : 0,
         );
     }

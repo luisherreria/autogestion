@@ -381,12 +381,12 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                 });
             }
             if ($('#tablaPagos').length && $.fn.dataTable) {
-                function iconoPdfPago(archivo) {
+                function enlacePdfPago(archivo, etiqueta) {
                     if (!archivo) {
-                        return '-';
+                        return '';
                     }
                     var url = 'descargar_pago.php?archivo=' + encodeURIComponent(archivo);
-                    return '<a href="' + url + '" target="_blank" title="Ver PDF" class="text-red-600 text-lg"><i class="fa-solid fa-file-pdf"></i></a>';
+                    return '<a href="' + url + '" target="_blank" class="text-xs text-red-600 hover:underline"><i class="fa-solid fa-file-pdf"></i> ' + etiqueta + '</a>';
                 }
                 $('#tablaPagos').DataTable({
                     ajax: 'ajax_pagos.php',
@@ -412,8 +412,13 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                         { data: 'periodo' },
                         { data: 'prestador' },
                         { data: 'obrasocial' },
-                        { data: 'suc' },
-                        { data: 'factura' },
+                        {
+                            data: null,
+                            className: 'nowrap',
+                            render: function (dato, tipo, fila) {
+                                return (fila.suc || '') + '-' + (fila.factura || '');
+                            }
+                        },
                         columnaImporte('facturado'),
                         columnaImporte('importe'),
                         columnaImporte('coseguro'),
@@ -421,39 +426,31 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                         columnaImporte('liquidado'),
                         columnaImporte('pagado'),
                         columnaImporte('saldo'),
-                        { data: null, defaultContent: '-', render: function () { return '-'; } },
-                        { data: null, defaultContent: '-', className: 'num', render: function () { return '-'; } },
+                        { data: 'recibo', className: 'nowrap' },
+                        { data: 'retencion', className: 'num nowrap' },
+                        { data: 'orden', className: 'nowrap' },
+                        { data: 'fecha', className: 'nowrap' },
                         {
-                            data: 'pagada',
+                            data: null,
                             className: 'text-center',
                             orderable: false,
-                            render: function (dato, tipo) {
+                            render: function (dato, tipo, fila) {
                                 if (tipo === 'export' || tipo === 'filter' || tipo === 'sort') {
-                                    return dato ? 'Si' : 'No';
+                                    var nombres = [];
+                                    if (fila.deb) {
+                                        nombres.push(fila.deb);
+                                    }
+                                    if (fila.csn) {
+                                        nombres.push(fila.csn);
+                                    }
+                                    return nombres.join(' ');
                                 }
-                                return dato ? '<input type="checkbox" checked="checked" disabled="disabled">' : '<input type="checkbox" disabled="disabled">';
-                            }
-                        },
-                        { data: 'orden' },
-                        { data: 'fecha' },
-                        {
-                            data: 'deb',
-                            className: 'text-center',
-                            render: function (dato, tipo) {
-                                if (tipo === 'export' || tipo === 'filter' || tipo === 'sort') {
-                                    return dato || '';
+                                var debito = enlacePdfPago(fila.deb, 'Débito');
+                                var csn = enlacePdfPago(fila.csn, 'CSN');
+                                if (!debito && !csn) {
+                                    return '-';
                                 }
-                                return iconoPdfPago(dato);
-                            }
-                        },
-                        {
-                            data: 'csn',
-                            className: 'text-center',
-                            render: function (dato, tipo) {
-                                if (tipo === 'export' || tipo === 'filter' || tipo === 'sort') {
-                                    return dato || '';
-                                }
-                                return iconoPdfPago(dato);
+                                return '<div class="flex flex-col gap-1 items-center">' + debito + csn + '</div>';
                             }
                         }
                     ],

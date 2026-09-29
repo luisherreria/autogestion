@@ -9,6 +9,7 @@ if (!defined('PORTAL_AUTOGESTION')) {
 <style>
     #tablaPagos tr.fila-pagada td { background-color: #dcfce7 !important; }
     #tablaPagos td.num, #tablaPagos th.num { text-align: right; }
+    #tablaPagos td.nowrap, #tablaPagos th.nowrap { white-space: nowrap; }
     #tablaPagos_wrapper .dataTables_length,
     #tablaPagos_wrapper .dataTables_filter,
     #tablaPagos_wrapper .dt-buttons { margin-bottom: 0.75rem; }
@@ -20,7 +21,6 @@ if (!defined('PORTAL_AUTOGESTION')) {
                 <th>Periodo</th>
                 <th>Prestador</th>
                 <th>O.Social</th>
-                <th>Suc</th>
                 <th>Factura</th>
                 <th class="num">Facturado</th>
                 <th class="num">Importe</th>
@@ -31,11 +31,9 @@ if (!defined('PORTAL_AUTOGESTION')) {
                 <th class="num">Saldo</th>
                 <th>Recibo</th>
                 <th class="num">Retencion</th>
-                <th>Pago</th>
-                <th>O.Pago</th>
-                <th>F. Pago</th>
-                <th>pdfdebito</th>
-                <th>pdfcsn</th>
+                <th class="nowrap">O.Pago</th>
+                <th class="nowrap">F. Pago</th>
+                <th>Archivos</th>
             </tr>
         </thead>
         <tbody></tbody>
