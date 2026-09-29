@@ -10,6 +10,33 @@ if (isset($_SESSION['logueado']) && $_SESSION['logueado'] == 1) {
 $config = appConfig();
 $error = '';
 
+function cargarPerfilEnSesion()
+{
+    $_SESSION['usuario_nombre'] = '';
+    $_SESSION['usuario_apellido'] = '';
+    try {
+        $pdo = Database::getConnection();
+        $stmtPerfil = $pdo->prepare(
+            'SELECT nombre, apellido
+             FROM usuarios_prestadores
+             WHERE codigo_prestador = :codigo AND email_login = :email
+             LIMIT 1'
+        );
+        $stmtPerfil->execute(array(
+            ':codigo' => isset($_SESSION['codigo']) ? trim($_SESSION['codigo']) : '',
+            ':email' => isset($_SESSION['email']) ? trim($_SESSION['email']) : '',
+        ));
+        $perfil = $stmtPerfil->fetch(PDO::FETCH_ASSOC);
+        if ($perfil && trim($perfil['nombre']) !== '' && trim($perfil['apellido']) !== '') {
+            $_SESSION['usuario_nombre'] = trim($perfil['nombre']);
+            $_SESSION['usuario_apellido'] = trim($perfil['apellido']);
+        }
+    } catch (Exception $e) {
+        $_SESSION['usuario_nombre'] = '';
+        $_SESSION['usuario_apellido'] = '';
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $usuario = isset($_POST['usuario']) ? trim($_POST['usuario']) : '';
     $clave = isset($_POST['clave']) ? trim($_POST['clave']) : '';
@@ -70,6 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['mailcontra'] = '';
             $_SESSION['tipos_correo'] = array();
             $_SESSION['permisos'] = permisosCompletos();
+            cargarPerfilEnSesion();
             header('Location: index.php');
             exit;
         } elseif ($adminEncontrado && !$adminClaveOk) {
@@ -89,6 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['mailcontra'] = '';
             $_SESSION['tipos_correo'] = array();
             $_SESSION['permisos'] = permisosCompletos();
+            cargarPerfilEnSesion();
             header('Location: index.php');
             exit;
         } elseif ($clave !== $config['clave']) {
@@ -142,6 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['mailcontra'] = trim((string) $prestador['MAILCONTRA']);
                 $_SESSION['tipos_correo'] = $tiposEncontrados;
                 $_SESSION['permisos'] = permisosPorTipos($pdo, $tiposEncontrados);
+                cargarPerfilEnSesion();
                 header('Location: index.php');
                 exit;
             }

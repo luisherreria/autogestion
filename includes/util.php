@@ -394,7 +394,7 @@ function mapaModulosPermiso()
         'ver_coseguros' => array('clave' => 'coseguros', 'titulo' => 'Coseguros y APB'),
         'ver_normativas' => array('clave' => 'normativas', 'titulo' => 'Normativas'),
         'ver_contratos' => array('clave' => 'contratos', 'titulo' => 'Contratos'),
-        'ver_pagos' => array('clave' => 'pagos', 'titulo' => 'Pagos Realizados'),
+        'ver_pagos' => array('clave' => 'pagos', 'titulo' => 'Liquidaciones'),
         'ver_empadronamiento' => array('clave' => 'ver_empadronamiento', 'titulo' => 'Emp. Afiliados'),
     );
 }

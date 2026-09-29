@@ -11,7 +11,7 @@ $secciones = array(
     'coseguros' => array('titulo' => 'Coseguros y APB', 'icono' => 'fa-file-invoice-dollar'),
     'normativas' => array('titulo' => 'Normativas', 'icono' => 'fa-book'),
     'contratos' => array('titulo' => 'Contratos', 'icono' => 'fa-file-contract'),
-    'pagos' => array('titulo' => 'Pagos Realizados', 'icono' => 'fa-money-bill-wave'),
+    'pagos' => array('titulo' => 'Liquidaciones', 'icono' => 'fa-money-bill-wave'),
     'empadronamiento' => array('titulo' => 'Empadronamiento Afiliados', 'icono' => 'fa-id-card', 'permiso' => 'ver_empadronamiento'),
     'perfil' => array('titulo' => 'Mi perfil', 'icono' => 'fa-gear', 'oculto' => true, 'libre' => true),
     'admin_archivos' => array('titulo' => 'Gestión de Archivos', 'icono' => 'fa-cloud-arrow-up', 'solo_admin' => true),
@@ -34,6 +34,13 @@ if ($seccion === 'perfil' && empty($GLOBALS['renderPerfil'])) {
 
 $nombre = isset($_SESSION['nombre']) ? $_SESSION['nombre'] : '';
 $codigo = isset($_SESSION['codigo']) ? $_SESSION['codigo'] : '';
+$inicialesUsuario = '';
+$nombrePerfil = isset($_SESSION['usuario_nombre']) ? trim($_SESSION['usuario_nombre']) : '';
+$apellidoPerfil = isset($_SESSION['usuario_apellido']) ? trim($_SESSION['usuario_apellido']) : '';
+$emailOperador = isset($_SESSION['email']) ? trim($_SESSION['email']) : '';
+if ($nombrePerfil !== '' && $apellidoPerfil !== '') {
+    $inicialesUsuario = strtoupper(substr($nombrePerfil, 0, 1) . substr($apellidoPerfil, 0, 1));
+}
 $esAdmin = isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin';
 $esLuis = $esAdmin;
 $accesoDenegado = false;
@@ -196,9 +203,22 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
             <span class="font-semibold text-lg">Autogestión Prestadores</span>
         </div>
         <div class="flex items-center gap-4">
-            <span class="text-sm text-blue-100">
-                <i class="fa-solid fa-user mr-1"></i>
-                <?php echo h($nombre); ?>
+            <span class="flex items-center gap-2">
+                <?php if ($inicialesUsuario !== '') { ?>
+                    <span class="w-8 h-8 rounded-full bg-blue-500 inline-flex items-center justify-center text-white font-bold text-xs shadow-md"><?php echo h($inicialesUsuario); ?></span>
+                <?php } else { ?>
+                    <i class="fa-solid fa-user text-blue-100"></i>
+                <?php } ?>
+                <span class="flex flex-col leading-tight text-right">
+                    <span class="text-sm text-blue-100"><?php echo h($nombre); ?></span>
+                    <?php if (!$esAdmin) { ?>
+                        <?php if ($nombrePerfil !== '' && $apellidoPerfil !== '') { ?>
+                            <span class="text-xs text-gray-200"><?php echo h($nombrePerfil . ' ' . $apellidoPerfil); ?></span>
+                        <?php } elseif ($emailOperador !== '') { ?>
+                            <span class="text-xs text-gray-200 break-all"><?php echo h($emailOperador); ?></span>
+                        <?php } ?>
+                    <?php } ?>
+                </span>
             </span>
             <a href="logout.php" class="bg-blue-950 hover:bg-black text-white text-sm rounded-lg px-3 py-2">
                 <i class="fa-solid fa-right-from-bracket mr-1"></i> Cerrar sesión
@@ -211,11 +231,28 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
             <a href="perfil.php" title="Mi perfil" class="absolute top-3 right-3 text-gray-400 hover:text-white">
                 <i class="fa-solid fa-gear"></i>
             </a>
-            <div class="text-3xl text-blue-300 mb-2"><i class="fa-solid fa-user-circle"></i></div>
+            <?php if ($inicialesUsuario !== '') { ?>
+                <div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-xl mx-auto shadow-md mb-2"><?php echo h($inicialesUsuario); ?></div>
+            <?php } else { ?>
+                <div class="w-12 h-12 rounded-full bg-blue-400 flex items-center justify-center text-white mx-auto shadow-md mb-2">
+                    <i class="fa-solid fa-user text-2xl"></i>
+                </div>
+            <?php } ?>
             <div class="font-medium text-white"><?php echo h($nombre); ?></div>
             <div class="text-xs text-slate-400 mt-1">
                 <?php echo $esAdmin ? 'Administrador' : h($codigo); ?>
             </div>
+            <?php if (!$esAdmin) { ?>
+                <?php if ($nombrePerfil !== '' && $apellidoPerfil !== '') { ?>
+                    <p class="text-xs text-gray-400 mt-1 border-t border-gray-600 pt-1 mx-2">
+                        Operador: <?php echo h($nombrePerfil . ' ' . $apellidoPerfil); ?>
+                    </p>
+                <?php } elseif ($emailOperador !== '') { ?>
+                    <p class="text-xs text-gray-400 mt-1 border-t border-gray-600 pt-1 mx-2 break-all">
+                        Operador: <?php echo h($emailOperador); ?>
+                    </p>
+                <?php } ?>
+            <?php } ?>
         </div>
         <nav class="py-3">
             <?php foreach ($secciones as $clave => $item) {
