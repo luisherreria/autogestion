@@ -14,6 +14,7 @@ $secciones = array(
     'pagos' => array('titulo' => 'Liquidaciones', 'icono' => 'fa-money-bill-wave'),
     'empadronamiento' => array('titulo' => 'Empadronamiento Afiliados', 'icono' => 'fa-id-card', 'permiso' => 'ver_empadronamiento'),
     'perfil' => array('titulo' => 'Mi perfil', 'icono' => 'fa-gear', 'oculto' => true, 'libre' => true),
+    'notificaciones' => array('titulo' => 'Notificaciones', 'icono' => 'fa-bell', 'oculto' => true),
     'admin_archivos' => array('titulo' => 'Gestión de Archivos', 'icono' => 'fa-cloud-arrow-up', 'solo_admin' => true),
     'auditoria_vista' => array('titulo' => 'Control de Auditoría', 'icono' => 'fa-clipboard-list', 'solo_admin' => true),
     'admin_permisos' => array('titulo' => 'Gestión de Permisos', 'icono' => 'fa-user-lock', 'solo_admin' => true),
@@ -56,6 +57,9 @@ try {
 $soloAdmin = !empty($secciones[$seccion]['solo_admin']);
 $clavePermisoActual = isset($secciones[$seccion]['permiso']) ? $secciones[$seccion]['permiso'] : $seccion;
 $puedeVer = $esAdmin || !empty($secciones[$seccion]['libre']) || (!$soloAdmin && tienePermiso($clavePermisoActual));
+if ($seccion === 'notificaciones') {
+    $puedeVer = $esAdmin || tienePermiso('pagos') || tienePermiso('autorizaciones');
+}
 if (!$puedeVer) {
     if (!isset($_GET['seccion']) || $_GET['seccion'] === '') {
         foreach ($secciones as $claveAlternativa => $itemAlternativo) {
@@ -85,6 +89,14 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
     <link rel="icon" type="image/x-icon" href="upload/img/favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        @media print {
+            body * { visibility: hidden; }
+            #contenido-notificacion, #contenido-notificacion * { visibility: visible; }
+            #contenido-notificacion { position: absolute; left: 0; top: 0; width: 100%; }
+        }
+    </style>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
     <?php if ($seccion === 'auditoria_vista' || $seccion === 'pagos' || $seccion === 'obras_sociales' || $seccion === 'autorizaciones') { ?>
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
@@ -220,6 +232,10 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                     <?php } ?>
                 </span>
             </span>
+            <a href="notificaciones.php" class="relative inline-flex items-center text-white hover:text-blue-100" title="Notificaciones">
+                <i class="fa-solid fa-bell text-lg"></i>
+                <span id="badge-notificaciones" class="hidden absolute -top-2 -right-2 min-w-[1.1rem] h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold items-center justify-center">0</span>
+            </a>
             <a href="logout.php" class="bg-blue-950 hover:bg-black text-white text-sm rounded-lg px-3 py-2">
                 <i class="fa-solid fa-right-from-bracket mr-1"></i> Cerrar sesión
             </a>
@@ -301,6 +317,23 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
         </nav>
     </aside>
 
+    <div id="modal-notificacion" class="fixed inset-0 z-[80] hidden items-center justify-center bg-slate-900/50 p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+                <h2 id="titulo-notificacion" class="text-lg font-semibold text-slate-900">Notificación</h2>
+                <button type="button" id="cerrar-notificacion" class="text-slate-500 hover:text-slate-800" aria-label="Cerrar">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="contenido-notificacion" class="px-5 py-4 overflow-y-auto text-sm text-slate-800"></div>
+            <div class="flex justify-end gap-2 px-5 py-4 border-t border-slate-200">
+                <a id="descargar-notificacion" href="#" target="_blank" class="hidden rounded-lg px-4 py-2 text-sm bg-blue-800 hover:bg-blue-900 text-white">Descargar PDF</a>
+                <button type="button" id="imprimir-notificacion" class="rounded-lg px-4 py-2 text-sm border border-slate-300 text-slate-700">Imprimir</button>
+                <button type="button" id="cerrar-notificacion-pie" class="rounded-lg px-4 py-2 text-sm border border-slate-300 text-slate-700">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <main class="ml-64 mt-16 p-6 min-h-screen">
         <h1 class="text-2xl font-semibold text-slate-900 mb-4"><?php echo h($accesoDenegado ? 'Acceso denegado' : $secciones[$seccion]['titulo']); ?></h1>
         <?php if ($accesoDenegado) { ?>
@@ -327,6 +360,97 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
     <?php } ?>
     <script>
+        function pintarBadgeNotificaciones(cantidad) {
+            var badge = $('#badge-notificaciones');
+            if (cantidad > 0) {
+                badge.text(cantidad > 99 ? '99+' : String(cantidad));
+                badge.removeClass('hidden').addClass('inline-flex');
+            } else {
+                badge.text('0');
+                badge.addClass('hidden').removeClass('inline-flex');
+            }
+        }
+
+        function guardarAvisoNotificaciones(detalle) {
+            var modulo = 'notificaciones';
+            if (window.navigator && navigator.sendBeacon) {
+                var cuerpo = new Blob(
+                    ['modulo=' + encodeURIComponent(modulo) + '&detalle=' + encodeURIComponent(detalle)],
+                    {type: 'application/x-www-form-urlencoded'}
+                );
+                navigator.sendBeacon('ajax_auditoria.php', cuerpo);
+                return;
+            }
+            $.ajax({
+                url: 'ajax_auditoria.php',
+                type: 'POST',
+                data: { modulo: modulo, detalle: detalle }
+            });
+        }
+
+        function consultarCampanita() {
+            $.getJSON('ajax_campanita.php').done(function (respuesta) {
+                var cantidad = respuesta && respuesta.cantidad ? parseInt(respuesta.cantidad, 10) : 0;
+                if (isNaN(cantidad)) {
+                    cantidad = 0;
+                }
+                pintarBadgeNotificaciones(cantidad);
+                if (cantidad > 0 && !sessionStorage.getItem('campanita_bienvenida') && !window.campanitaAvisada && window.Swal) {
+                    window.campanitaAvisada = true;
+                    sessionStorage.setItem('campanita_bienvenida', '1');
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Tienes ' + cantidad + ' notificaciones nuevas',
+                        showCancelButton: true,
+                        confirmButtonText: 'Ir a Notificaciones',
+                        cancelButtonText: 'Cerrar',
+                        confirmButtonColor: '#1e40af'
+                    }).then(function (resultado) {
+                        if (resultado && resultado.isConfirmed) {
+                            guardarAvisoNotificaciones('Vio las notificaciones nuevas');
+                            window.location.href = 'notificaciones.php';
+                            return;
+                        }
+                        guardarAvisoNotificaciones('Cerró el aviso de notificaciones nuevas');
+                    });
+                }
+            });
+        }
+
+        function abrirNotificacion(id) {
+            $.ajax({
+                url: 'ajax_leer_notificacion.php',
+                type: 'POST',
+                dataType: 'json',
+                data: { id_notificacion: id }
+            }).done(function (respuesta) {
+                if (!respuesta || !respuesta.ok) {
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'No se pudo abrir',
+                            text: (respuesta && respuesta.mensaje) ? respuesta.mensaje : ''
+                        });
+                    }
+                    return;
+                }
+                $('#titulo-notificacion').text(respuesta.asunto || 'Notificación');
+                $('#contenido-notificacion').html(respuesta.cuerpo_html || '');
+                if (respuesta.archivo_adjunto) {
+                    $('#descargar-notificacion')
+                        .attr('href', 'descargar_notificacion.php?id=' + encodeURIComponent(id))
+                        .removeClass('hidden');
+                } else {
+                    $('#descargar-notificacion').addClass('hidden').attr('href', '#');
+                }
+                $('#modal-notificacion').removeClass('hidden').addClass('flex');
+                consultarCampanita();
+                if ($.fn.dataTable && $.fn.dataTable.isDataTable('#tablaNotificaciones')) {
+                    $('#tablaNotificaciones').DataTable().ajax.reload(null, false);
+                }
+            });
+        }
+
         function columnaImporte(campo) {
             return {
                 data: campo,
@@ -508,6 +632,48 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                     language: idiomaTabla
                 });
             }
+            if ($('#tablaNotificaciones').length && $.fn.dataTable) {
+                $('#tablaNotificaciones').DataTable({
+                    ajax: 'ajax_listar_notificaciones.php',
+                    pageLength: 25,
+                    lengthMenu: [[25, 50, 100, 500, -1], [25, 50, 100, 500, 'Todas']],
+                    order: [[0, 'desc']],
+                    processing: true,
+                    columns: [
+                        {
+                            data: 'fecha',
+                            render: function (dato, tipo, fila) {
+                                if (tipo === 'sort' || tipo === 'type') {
+                                    return fila.fecha_orden || '';
+                                }
+                                return dato;
+                            }
+                        },
+                        {
+                            data: 'asunto',
+                            render: function (dato, tipo, fila) {
+                                var texto = dato || '';
+                                if (tipo === 'display' && !fila.leida) {
+                                    return '<span class="font-semibold">' + $('<div>').text(texto).html() + '</span>';
+                                }
+                                return texto;
+                            }
+                        },
+                        { data: 'tipo' },
+                        {
+                            data: 'id',
+                            orderable: false,
+                            searchable: false,
+                            className: 'text-center',
+                            render: function (dato) {
+                                var id = parseInt(dato, 10) || 0;
+                                return '<button type="button" class="text-blue-800 hover:text-blue-950" title="Abrir correo" onclick="abrirNotificacion(' + id + ')"><i class="fa-solid fa-envelope"></i></button>';
+                            }
+                        }
+                    ],
+                    language: idiomaTabla
+                });
+            }
             if ($('#tablaPermisos').length && $.fn.dataTable) {
                 var idiomaPermisos = $.extend({}, idiomaTabla, { emptyTable: 'No hay permisos para mostrar' });
                 var tablaPermisos = $('#tablaPermisos').DataTable({
@@ -679,6 +845,16 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                 }
                 registrarAuditoria(menuActual, detalle);
             });
+
+            function cerrarModalNotificacion() {
+                $('#modal-notificacion').addClass('hidden').removeClass('flex');
+            }
+            $('#cerrar-notificacion, #cerrar-notificacion-pie').on('click', cerrarModalNotificacion);
+            $('#imprimir-notificacion').on('click', function () {
+                window.print();
+            });
+            consultarCampanita();
+            setInterval(consultarCampanita, 300000);
         });
     </script>
 <!-- Reloj Flotante Inferior Derecho -->

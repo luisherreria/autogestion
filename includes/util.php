@@ -587,6 +587,84 @@ function tienePermiso($modulo)
     return isset($_SESSION['permisos'][$modulo]) && $_SESSION['permisos'][$modulo];
 }
 
+function asegurarTablaNotificaciones($pdo)
+{
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS notificaciones_historial (
+            id_notificacion INT NOT NULL AUTO_INCREMENT,
+            cod_prestador VARCHAR(50) DEFAULT NULL,
+            fecha_emision DATETIME NOT NULL,
+            asunto_mail VARCHAR(255) DEFAULT NULL,
+            tipo_notificacion VARCHAR(50) DEFAULT NULL,
+            cuerpo_html MEDIUMTEXT,
+            archivo_adjunto VARCHAR(255) DEFAULT NULL,
+            estado_lectura TINYINT(1) NOT NULL DEFAULT 0,
+            fecha_lectura DATETIME DEFAULT NULL,
+            usuario_lector VARCHAR(255) DEFAULT NULL,
+            PRIMARY KEY (id_notificacion),
+            KEY idx_notif_prestador (cod_prestador, estado_lectura)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8"
+    );
+}
+
+function tiposNotificacionPermitidos()
+{
+    $tipos = array();
+    if (tienePermiso('pagos')) {
+        $tipos = array_merge($tipos, array('RESUMEN', 'PAGO', 'CSN', 'DOC_RESP', 'DEBITO'));
+    }
+    if (tienePermiso('autorizaciones')) {
+        $tipos = array_merge($tipos, array('VIGENCIA', 'COSEGUROS_VIG'));
+    }
+    return $tipos;
+}
+
+function filtroNotificaciones($soloNoLeidas)
+{
+    $tipos = tiposNotificacionPermitidos();
+    $marcas = array();
+    $parametros = array();
+    foreach ($tipos as $indice => $tipo) {
+        $clave = ':tipo' . $indice;
+        $marcas[] = $clave;
+        $parametros[$clave] = $tipo;
+    }
+    $esAdmin = isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin';
+    $where = array();
+    if (count($marcas) === 0) {
+        $where[] = '1 = 0';
+    } else {
+        $where[] = 'tipo_notificacion IN (' . implode(', ', $marcas) . ')';
+    }
+    if (!$esAdmin) {
+        $where[] = 'TRIM(cod_prestador) = :codigo';
+        $parametros[':codigo'] = isset($_SESSION['codigo']) ? trim($_SESSION['codigo']) : '';
+    }
+    if ($soloNoLeidas) {
+        $where[] = 'estado_lectura = 0';
+    }
+    return array(
+        'where' => implode(' AND ', $where),
+        'parametros' => $parametros,
+    );
+}
+
+function notificacionVisible($fila)
+{
+    if (!is_array($fila)) {
+        return false;
+    }
+    $tipo = strtoupper(trim((string) $fila['tipo_notificacion']));
+    if (!in_array($tipo, tiposNotificacionPermitidos(), true)) {
+        return false;
+    }
+    if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') {
+        return true;
+    }
+    $codigo = isset($_SESSION['codigo']) ? trim($_SESSION['codigo']) : '';
+    return $codigo !== '' && strcasecmp(trim((string) $fila['cod_prestador']), $codigo) === 0;
+}
+
 function prestadorPuedeVerCarpeta($pdo, $carpeta)
 {
     if ($carpeta === '' || strcasecmp($carpeta, 'general') === 0 || esUsuarioLuis()) {
