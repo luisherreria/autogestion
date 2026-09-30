@@ -649,6 +649,9 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                                 return dato;
                             }
                         },
+                        { data: 'razon_social' },
+                        { data: 'comprobante' },
+                        { data: 'obra_social' },
                         {
                             data: 'asunto',
                             render: function (dato, tipo, fila) {

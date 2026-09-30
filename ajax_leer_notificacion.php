@@ -86,12 +86,8 @@ try {
     $destinatarios = preg_replace('/\s+/', ' ', str_replace(array('<', '>'), '', trim((string) $fila['destinatarios_mail'])));
     $remitente = trim($remitente);
     $destinatarios = trim($destinatarios, " \t,");
-    $dias = array('domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado');
     $marca = strtotime($fila['fecha_emision']);
-    $fechaFormateada = '';
-    if ($marca !== false && $marca > 0) {
-        $fechaFormateada = $dias[(int) date('w', $marca)] . ' ' . date('j/n/Y H:i', $marca);
-    }
+    $fechaFormateada = ($marca !== false && $marca > 0) ? date('d/m/Y H:i', $marca) : '';
     $inicial = strtoupper(substr($remitente, 0, 1));
     if ($inicial === '') {
         $inicial = 'M';

@@ -10,10 +10,13 @@ if (!defined('PORTAL_AUTOGESTION')) {
     <table id="tablaNotificaciones" class="display w-full text-sm">
         <thead>
             <tr>
-                <th>Fecha emisión</th>
-                <th>Asunto</th>
-                <th>Tipo notificación</th>
-                <th class="text-center">Acciones</th>
+                <th class="border-b p-2">Fecha emisión</th>
+                <th class="border-b p-2">Razón social</th>
+                <th class="border-b p-2">Comprobante</th>
+                <th class="border-b p-2">Obra Social</th>
+                <th class="border-b p-2">Asunto</th>
+                <th class="border-b p-2">Tipo notificación</th>
+                <th class="border-b p-2 text-center">Acciones</th>
             </tr>
         </thead>
         <tbody></tbody>
