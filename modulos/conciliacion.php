@@ -26,15 +26,6 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'admin') {
     </form>
 </div>
 
-<style>
-#tablaConciliacion_wrapper .dt-button {
-    background-image: none;
-    border: none;
-}
-#tablaConciliacion_wrapper .buttons-excel { background-color: #16a34a; color: #fff; }
-#tablaConciliacion_wrapper .buttons-pdf { background-color: #dc2626; color: #fff; }
-#tablaConciliacion_wrapper .buttons-print { background-color: #4b5563; color: #fff; }
-</style>
 <div class="flex flex-col md:flex-row gap-4 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
     <div class="flex-1">
         <label for="filtroPrestador" class="block text-sm font-medium text-gray-700 mb-1">Filtrar por Prestador:</label>
@@ -87,50 +78,17 @@ function iniciarConciliacion() {
         lengthMenu: [[10, 25, 50, 100, 500, -1], [10, 25, 50, 100, 500, 'Todas']],
         deferRender: false,
         dom: '<"flex flex-col md:flex-row justify-between items-center mb-4" <"flex items-center gap-4"l B> f> rt <"flex justify-between items-center mt-4" i p>',
-        buttons: [
-            {
-                extend: 'excelHtml5',
-                text: '<i class="fa-solid fa-file-excel mr-1"></i> Excel',
-                className: 'bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded shadow-sm text-sm border-none ml-2',
-                title: 'Conciliador de Saldos',
-                exportOptions: {
-                    columns: [1, 2, 3, 4, 5, 6],
-                    format: {
-                        body: function (dato) {
-                            return $('<div>').html(dato).text().trim();
-                        }
-                    }
-                }
-            },
-            {
-                extend: 'pdfHtml5',
-                text: '<i class="fa-solid fa-file-pdf mr-1"></i> PDF',
-                className: 'bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded shadow-sm text-sm border-none ml-2',
-                title: 'Conciliador de Saldos',
-                orientation: 'landscape',
-                exportOptions: {
-                    columns: [1, 2, 3, 4, 5, 6],
-                    format: {
-                        body: function (dato) {
-                            return $('<div>').html(dato).text().trim();
-                        }
-                    }
-                }
-            },
-            {
-                extend: 'print',
-                text: '<i class="fa-solid fa-print mr-1"></i> Imprimir',
-                className: 'bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded shadow-sm text-sm border-none ml-2',
-                exportOptions: {
-                    columns: [1, 2, 3, 4, 5, 6],
-                    format: {
-                        body: function (dato) {
-                            return $('<div>').html(dato).text().trim();
-                        }
+        buttons: botonesExportacionGrilla({
+            title: 'Conciliador de Saldos',
+            exportOptions: {
+                columns: [1, 2, 3, 4, 5, 6],
+                format: {
+                    body: function (dato) {
+                        return $('<div>').html(dato).text().trim();
                     }
                 }
             }
-        ],
+        }),
         columnDefs: [
             { orderable: false, targets: 0 }
         ],

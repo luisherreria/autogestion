@@ -19,6 +19,7 @@ $secciones = array(
     'auditoria_vista' => array('titulo' => 'Control de Auditoría', 'icono' => 'fa-clipboard-list', 'solo_admin' => true),
     'admin_permisos' => array('titulo' => 'Gestión de Permisos', 'icono' => 'fa-user-lock', 'solo_admin' => true),
     'conciliacion' => array('titulo' => 'Conciliador de Saldos', 'icono' => 'fa-scale-balanced', 'solo_admin' => true),
+    'busqueda_prestadores' => array('titulo' => 'Acceso Prestadores', 'icono' => 'fa-user-secret', 'solo_admin' => true),
 );
 
 if (!empty($GLOBALS['forzarSeccion'])) {
@@ -33,6 +34,9 @@ if ($seccion === 'perfil' && empty($GLOBALS['renderPerfil'])) {
     header('Location: perfil.php');
     exit;
 }
+
+$mostrarBienvenida = !empty($_SESSION['mostrar_bienvenida']);
+unset($_SESSION['mostrar_bienvenida']);
 
 $nombre = isset($_SESSION['nombre']) ? $_SESSION['nombre'] : '';
 $codigo = isset($_SESSION['codigo']) ? $_SESSION['codigo'] : '';
@@ -112,16 +116,17 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
             padding: 0.25rem 0.5rem;
         }
         #tablaPagos_wrapper .dt-buttons,
-        #tablaObrasSociales_wrapper .dt-buttons { margin: 0 0 0.75rem; }
-        #tablaPagos_wrapper .dt-buttons .dt-button,
-        #tablaObrasSociales_wrapper .dt-buttons .dt-button,
-        #tablaAutorizaciones_wrapper .dt-buttons .dt-button {
-            background: #1e40af;
-            color: #fff;
-            border: 0;
+        #tablaObrasSociales_wrapper .dt-buttons,
+        #tabla-auditoria_wrapper .dt-buttons,
+        #tablaConciliacion_wrapper .dt-buttons { margin: 0 0 0.75rem; }
+        .dt-buttons .dt-button {
+            background: #fff;
+            color: #334155;
+            border: 1px solid #d1d5db;
             border-radius: 0.375rem;
-            padding: 0.25rem 0.75rem;
+            padding: 0.35rem 0.55rem;
             margin-right: 0.35rem;
+            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
         }
         #tablaAutorizaciones_wrapper .controles-autorizaciones {
             display: flex;
@@ -243,7 +248,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
         </div>
     </header>
 
-    <aside class="fixed top-16 left-0 bottom-0 w-64 bg-slate-900 text-slate-200 z-40 overflow-y-auto">
+    <aside class="fixed top-16 left-0 bottom-0 w-64 bg-slate-900 text-slate-200 z-40 overflow-y-auto flex flex-col">
         <div class="relative px-4 py-6 border-b border-slate-700 text-center">
             <a href="perfil.php" title="Mi perfil" class="absolute top-3 right-3 text-gray-400 hover:text-white">
                 <i class="fa-solid fa-gear"></i>
@@ -292,35 +297,43 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                 </a>
             <?php } ?>
             <?php if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') { ?>
-                <details class="border-t border-slate-700" <?php echo ($seccion === 'admin_archivos' || $seccion === 'auditoria_vista' || $seccion === 'admin_permisos' || $seccion === 'conciliacion') ? 'open' : ''; ?>>
+                <details class="border-t border-slate-700" <?php echo ($seccion === 'admin_archivos' || $seccion === 'auditoria_vista' || $seccion === 'admin_permisos' || $seccion === 'conciliacion' || $seccion === 'busqueda_prestadores') ? 'open' : ''; ?>>
                     <summary class="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer hover:bg-slate-800 list-none">
                         <i class="fa-solid fa-user-shield w-5 text-center"></i>
                         <span class="flex-1">Administrador</span>
                         <i class="fa-solid fa-chevron-down text-xs text-slate-400"></i>
                     </summary>
-                    <a href="index.php?seccion=admin_archivos"
-                       class="nav-portal flex items-center gap-3 pl-10 pr-4 py-2 text-sm hover:bg-slate-800 <?php echo $seccion === 'admin_archivos' ? 'bg-slate-800 text-white' : ''; ?>">
-                        <i class="fa-solid fa-cloud-arrow-up w-5 text-center"></i>
-                        <span>Gestión de Archivos</span>
-                    </a>
-                    <a href="index.php?seccion=auditoria_vista"
-                       class="nav-portal flex items-center gap-3 pl-10 pr-4 py-2 text-sm hover:bg-slate-800 <?php echo $seccion === 'auditoria_vista' ? 'bg-slate-800 text-white' : ''; ?>">
-                        <i class="fa-solid fa-clipboard-list w-5 text-center"></i>
-                        <span>Control de Auditoría</span>
-                    </a>
-                    <a href="index.php?seccion=admin_permisos"
-                       class="nav-portal flex items-center gap-3 pl-10 pr-4 py-2 text-sm hover:bg-slate-800 <?php echo $seccion === 'admin_permisos' ? 'bg-slate-800 text-white' : ''; ?>">
-                        <i class="fa-solid fa-user-lock w-5 text-center"></i>
-                        <span>Gestión de Permisos</span>
-                    </a>
-                    <a href="index.php?seccion=conciliacion"
-                       class="nav-portal flex items-center gap-3 pl-10 pr-4 py-2 text-sm hover:bg-slate-800 <?php echo $seccion === 'conciliacion' ? 'bg-slate-800 text-white' : ''; ?>">
-                        <i class="fa-solid fa-scale-balanced w-5 text-center"></i>
-                        <span>Conciliador de Saldos</span>
-                    </a>
+                    <ul class="mt-1 mb-2 space-y-1 px-4 text-sm text-slate-300">
+                        <li>
+                            <a href="index.php?seccion=auditoria_vista" class="block py-1 pl-6 hover:text-white <?php echo $seccion === 'auditoria_vista' ? 'text-white' : ''; ?>">Control Auditoría</a>
+                        </li>
+                        <li class="border-t border-slate-600 my-1"></li>
+                        <li>
+                            <a href="index.php?seccion=admin_archivos" class="block py-1 pl-6 hover:text-white <?php echo $seccion === 'admin_archivos' ? 'text-white' : ''; ?>">Gestión Archivos</a>
+                        </li>
+                        <li>
+                            <a href="index.php?seccion=admin_permisos" class="block py-1 pl-6 hover:text-white <?php echo $seccion === 'admin_permisos' ? 'text-white' : ''; ?>">Gestión Permisos</a>
+                        </li>
+                        <li class="border-t border-slate-600 my-1"></li>
+                        <li>
+                            <a href="index.php?seccion=conciliacion" class="block py-1 pl-6 hover:text-white <?php echo $seccion === 'conciliacion' ? 'text-white' : ''; ?>">Conciliador de Saldos</a>
+                        </li>
+                        <li class="border-t border-slate-600 my-1"></li>
+                        <li>
+                            <a href="index.php?seccion=busqueda_prestadores" class="block py-1 pl-6 text-blue-400 hover:text-blue-300 font-bold <?php echo $seccion === 'busqueda_prestadores' ? 'text-blue-300' : ''; ?>">
+                                <i class="fa-solid fa-user-secret mr-1"></i> Acceso Prestadores
+                            </a>
+                        </li>
+                    </ul>
                 </details>
             <?php } ?>
         </nav>
+        <div class="mt-auto pb-4 pt-6">
+            <div class="text-center text-[10px] text-gray-500 leading-tight tracking-wide">
+                <p>&copy; <?php echo date('Y'); ?> COMEDICA S.A.</p>
+                <p>Desarrollado por Luis Herrería</p>
+            </div>
+        </div>
     </aside>
 
     <div id="modal-notificacion" class="fixed inset-0 z-[80] hidden items-center justify-center bg-slate-900/50 p-4">
@@ -366,6 +379,35 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
     <?php } ?>
     <script>
+        function botonesExportacionGrilla(extra) {
+            extra = extra || {};
+            function armar(tipo, icono, color, titulo) {
+                var boton = {
+                    extend: tipo,
+                    text: '<i class="fa-solid ' + icono + '" style="color:' + color + '"></i>',
+                    titleAttr: titulo
+                };
+                if (extra.exportOptions) {
+                    boton.exportOptions = extra.exportOptions;
+                }
+                if (extra.title) {
+                    boton.title = extra.title;
+                }
+                if (tipo === 'pdf') {
+                    boton.orientation = 'landscape';
+                    boton.pageSize = 'A4';
+                }
+                return boton;
+            }
+            return [
+                armar('excel', 'fa-file-excel', '#217346', 'Exportar a Excel'),
+                armar('pdf', 'fa-file-pdf', '#d32f2f', 'Exportar a PDF'),
+                armar('print', 'fa-print', '#1e40af', 'Imprimir')
+            ];
+        }
+
+        var mostrarBienvenida = <?php echo $mostrarBienvenida ? 'true' : 'false'; ?>;
+
         function pintarBadgeNotificaciones(cantidad) {
             var badge = $('#badge-notificaciones');
             if (cantidad > 0) {
@@ -401,9 +443,9 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                     cantidad = 0;
                 }
                 pintarBadgeNotificaciones(cantidad);
-                if (cantidad > 0 && !sessionStorage.getItem('campanita_bienvenida') && !window.campanitaAvisada && window.Swal) {
+                if (cantidad > 0 && mostrarBienvenida && !window.campanitaAvisada && window.Swal) {
                     window.campanitaAvisada = true;
-                    sessionStorage.setItem('campanita_bienvenida', '1');
+                    mostrarBienvenida = false;
                     Swal.fire({
                         icon: 'info',
                         title: 'Tienes ' + cantidad + ' notificaciones nuevas',
@@ -496,10 +538,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                     lengthMenu: [[25, 50, 100, -1], [25, 50, 100, 'Todos']],
                     order: [[0, 'asc']],
                     dom: 'lBfrtip',
-                    buttons: [
-                        { extend: 'excel', text: 'Excel' },
-                        { extend: 'print', text: 'Imprimir' }
-                    ],
+                    buttons: botonesExportacionGrilla(),
                     language: idiomaObras
                 });
             }
@@ -527,28 +566,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                     scrollX: true,
                     processing: true,
                     dom: 'lfrtip',
-                    buttons: [
-                        {
-                            extend: 'excel',
-                            text: '<i class="fa-solid fa-file-excel"></i>',
-                            titleAttr: 'Exportar a Excel',
-                            exportOptions: { orthogonal: 'export' }
-                        },
-                        {
-                            extend: 'pdf',
-                            text: '<i class="fa-solid fa-file-pdf"></i>',
-                            titleAttr: 'Exportar a PDF',
-                            orientation: 'landscape',
-                            pageSize: 'A4',
-                            exportOptions: { orthogonal: 'export' }
-                        },
-                        {
-                            extend: 'print',
-                            text: '<i class="fa-solid fa-print"></i>',
-                            titleAttr: 'Imprimir',
-                            exportOptions: { orthogonal: 'export' }
-                        }
-                    ],
+                    buttons: botonesExportacionGrilla({ exportOptions: { orthogonal: 'export' } }),
                     columns: [
                         { data: 'periodo' },
                         {
@@ -836,11 +854,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                         { targets: 4, width: '150px', orderable: false }
                     ],
                     dom: "<'controles-autorizaciones'B<'controles-medio'lf>r>tip",
-                    buttons: [
-                        { extend: 'excel', text: 'Excel' },
-                        { extend: 'pdf', text: 'PDF', orientation: 'landscape', pageSize: 'A4' },
-                        { extend: 'print', text: 'Imprimir' }
-                    ],
+                    buttons: botonesExportacionGrilla(),
                     language: idiomaAutorizaciones
                 });
                 var medioAutorizaciones = $('#tablaAutorizaciones_wrapper .controles-medio');
@@ -851,13 +865,42 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                 });
             }
             if ($('#tabla-auditoria').length) {
-                $('#tabla-auditoria').DataTable({
+                var tablaAuditoria = $('#tabla-auditoria').DataTable({
                     pageLength: 25,
                     lengthMenu: [[25, 50, 100, 500, -1], [25, 50, 100, 500, 'Todas']],
                     order: [],
-                    dom: 'lBfrtip',
-                    buttons: ['excel', 'pdf', 'print'],
+                    dom: 'lfrtip',
+                    buttons: botonesExportacionGrilla({
+                        exportOptions: {
+                            format: {
+                                body: function (dato) {
+                                    return $('<div>').html(dato).text().trim();
+                                }
+                            }
+                        }
+                    }),
                     language: idiomaTabla
+                });
+                new $.fn.dataTable.Buttons(tablaAuditoria, { buttons: tablaAuditoria.init().buttons });
+                tablaAuditoria.buttons().container().appendTo('#contenedorExportacionAud');
+                var columnaFiltroAud = parseInt($('#campoFiltroAuditoria').val(), 10);
+                function aplicarFiltroAuditoria() {
+                    var columna = parseInt($('#campoFiltroAuditoria').val(), 10);
+                    var valor = $('#valorFiltroAuditoria').val();
+                    if (columnaFiltroAud !== columna) {
+                        tablaAuditoria.column(columnaFiltroAud).search('');
+                        columnaFiltroAud = columna;
+                    }
+                    tablaAuditoria.column(columna).search(valor).draw();
+                }
+                $('#valorFiltroAuditoria').on('keyup change', aplicarFiltroAuditoria);
+                $('#campoFiltroAuditoria').on('change', function () {
+                    $('#valorFiltroAuditoria').val('');
+                    aplicarFiltroAuditoria();
+                });
+                $('#btnLimpiarFiltroAud').on('click', function () {
+                    $('#valorFiltroAuditoria').val('');
+                    aplicarFiltroAuditoria();
                 });
             }
 

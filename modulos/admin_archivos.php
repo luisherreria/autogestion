@@ -116,7 +116,7 @@ try {
                             <td class="py-2 pr-3"><?php echo h(isset($alcances[$fila['alcance']]) ? $alcances[$fila['alcance']] : $fila['alcance']); ?></td>
                             <td class="py-2 pr-3"><?php echo h($fila['codigo_asociado']); ?></td>
                             <td class="py-2 text-right">
-                                <form method="post" action="index.php?seccion=admin_archivos" class="inline" onsubmit="return confirm('¿Borrar este archivo?');">
+                                <form method="post" action="index.php?seccion=admin_archivos" class="inline" onsubmit="return confirmarBorrarArchivo(this);">
                                     <input type="hidden" name="accion" value="borrar">
                                     <input type="hidden" name="id" value="<?php echo (int) $fila['id']; ?>">
                                     <button type="submit" class="text-red-600 hover:text-red-800" title="Borrar">
@@ -132,6 +132,26 @@ try {
     </div>
 </div>
 <script>
+function confirmarBorrarArchivo(formulario) {
+    if (formulario.getAttribute('data-confirmado') === '1') {
+        return true;
+    }
+    Swal.fire({
+        icon: 'warning',
+        title: '¿Borrar este archivo?',
+        showCancelButton: true,
+        confirmButtonText: 'Borrar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#b91c1c'
+    }).then(function (resultado) {
+        if (resultado && resultado.isConfirmed) {
+            formulario.setAttribute('data-confirmado', '1');
+            formulario.submit();
+        }
+    });
+    return false;
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     if (typeof jQuery === 'undefined') {
         return;

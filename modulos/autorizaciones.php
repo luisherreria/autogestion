@@ -14,12 +14,12 @@ $desde = date('Y-m-d', strtotime('-90 days'));
 $desdeTexto = date('d/m/Y', strtotime($desde));
 $hastaTexto = date('d/m/Y');
 
-$sqlAmbulatorio = "SELECT auto_id, CONUMERO AS conumero, COFECHA AS cofecha, CONOMPAC AS conompac, COESTADO AS coestado, CONROAUTO AS conroauto, COMEDICO AS codigo_prestador, 'AMBULATORIO' AS origen
+$sqlAmbulatorio = "SELECT auto_id, CONUMERO AS conumero, COFECHA AS cofecha, CONOMPAC AS conompac, COESTADO AS coestado, CONROAUTO AS conroauto, COPRESTADO AS codigo_prestador, 'AMBULATORIO' AS origen
         FROM ordenes
         WHERE COFECHA >= :desde_ambu
           AND COFECHA < :hasta_ambu
           AND COESTADO IN ('AUTORIZADA', 'RECHAZADA')";
-$sqlSanatorial = "SELECT auto_id, conumero, cofecha, conompac, coestado, conroauto, comedico AS codigo_prestador, 'SANATORIAL' AS origen
+$sqlSanatorial = "SELECT auto_id, conumero, cofecha, conompac, coestado, conroauto, COPRESTADO AS codigo_prestador, 'SANATORIAL' AS origen
         FROM sanorden
         WHERE cofecha >= :desde_sano
           AND cofecha < :hasta_sano
@@ -32,8 +32,11 @@ $parametros = array(
     ':hasta_sano' => $manana,
 );
 if (!$esAdmin) {
-    $sqlAmbulatorio .= ' AND COMEDICO = :codigo';
-    $sqlSanatorial .= ' AND comedico = :codigo_sano';
+    if ($codigo === '') {
+        error_log('ERROR DE SESION: El codigo de prestador esta vacio en modulos/autorizaciones.php');
+    }
+    $sqlAmbulatorio .= ' AND TRIM(COPRESTADO) = :codigo';
+    $sqlSanatorial .= ' AND TRIM(COPRESTADO) = :codigo_sano';
     $parametros[':codigo'] = $codigo;
     $parametros[':codigo_sano'] = $codigo;
 }

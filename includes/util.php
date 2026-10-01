@@ -101,19 +101,16 @@ function emailEstaEnLista($listaMails, $emailIngresado)
         return false;
     }
 
-    $porComa = explode(',', (string) $listaMails);
-    $limpios = array();
-    foreach ($porComa as $trozo) {
-        $porPuntoComa = explode(';', $trozo);
-        foreach ($porPuntoComa as $correo) {
-            $correo = strtolower(trim($correo));
-            if ($correo !== '') {
-                $limpios[] = $correo;
-            }
+    $trozos = preg_split('/[;,\s]+/', (string) $listaMails);
+    if (!is_array($trozos)) {
+        return false;
+    }
+    foreach ($trozos as $correo) {
+        if (strtolower(trim($correo)) === $emailIngresado) {
+            return true;
         }
     }
-
-    return in_array($emailIngresado, $limpios, true);
+    return false;
 }
 
 function esUsuarioLuis()

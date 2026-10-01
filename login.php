@@ -99,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['permisos'] = permisosCompletos();
             cargarPerfilEnSesion();
             completarPrestadorNotificaciones(Database::getConnection());
+            $_SESSION['mostrar_bienvenida'] = 1;
             header('Location: index.php');
             exit;
         } elseif ($adminEncontrado && !$adminClaveOk) {
@@ -120,6 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['permisos'] = permisosCompletos();
             cargarPerfilEnSesion();
             completarPrestadorNotificaciones(Database::getConnection());
+            $_SESSION['mostrar_bienvenida'] = 1;
             header('Location: index.php');
             exit;
         } elseif ($clave !== $config['clave']) {
@@ -131,10 +133,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare(
                 'SELECT CODIGO, NOMBRE, MAIL_AUTO, MAIL_DEB, MAIL_PAGO, MAILCONTRA
                  FROM ebamp
-                 WHERE LOWER(IFNULL(MAIL_AUTO, \'\')) LIKE :mail_auto
+                 WHERE (LOWER(IFNULL(MAIL_AUTO, \'\')) LIKE :mail_auto
                     OR LOWER(IFNULL(MAIL_DEB, \'\')) LIKE :mail_deb
                     OR LOWER(IFNULL(MAIL_PAGO, \'\')) LIKE :mail_pago
-                    OR LOWER(IFNULL(MAILCONTRA, \'\')) LIKE :mail_contra
+                    OR LOWER(IFNULL(MAILCONTRA, \'\')) LIKE :mail_contra)
+                   AND (FECHABAJA IS NULL
+                    OR FECHABAJA = \'0000-00-00\'
+                    OR FECHABAJA = \'\'
+                    OR DATE(FECHABAJA) >= CURDATE())
                  ORDER BY CODIGO ASC'
             );
             $stmt->execute(array(
@@ -175,6 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['permisos'] = permisosPorTipos($pdo, $tiposEncontrados);
                 cargarPerfilEnSesion();
                 completarPrestadorNotificaciones($pdo);
+                $_SESSION['mostrar_bienvenida'] = 1;
                 header('Location: index.php');
                 exit;
             }
@@ -195,7 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
-<body class="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+<body class="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4">
     <div class="w-full max-w-md bg-white rounded-2xl shadow-lg overflow-hidden">
         <div class="bg-blue-800 text-white px-6 py-8 text-center">
             <img src="upload/img/solo_logo_comedica.png" alt="Comedica" class="w-auto h-32 mx-auto object-contain mb-3">
@@ -223,6 +230,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 Ingresar
             </button>
         </form>
+    </div>
+    <div class="mt-8 text-center text-[10px] text-gray-500 leading-tight tracking-wide w-full">
+        <p>&copy; <?php echo date('Y'); ?> COMEDICA S.A.</p>
+        <p>Desarrollado por Luis Herrería</p>
     </div>
 </body>
 </html>
