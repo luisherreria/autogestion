@@ -131,31 +131,56 @@ try {
         exit;
     }
     $pdo = Database::getConnection();
-    $stmtPrestador = $pdo->prepare('SELECT NOMBRE FROM ebamp WHERE TRIM(CODIGO) = ? LIMIT 1');
+    $diccionarioPrestadores = array();
+    $stmtPrestadores = $pdo->query('SELECT CODIGO, NOMBRE FROM ebamp');
+    while ($row = $stmtPrestadores->fetch(PDO::FETCH_ASSOC)) {
+        $codigoPrestador = trim((string) $row['CODIGO']);
+        $nombrePrestadorBase = trim((string) $row['NOMBRE']);
+        if ($codigoPrestador === '' || $nombrePrestadorBase === '') {
+            continue;
+        }
+        $diccionarioPrestadores[$codigoPrestador] = $nombrePrestadorBase;
+    }
+    $facturasEnSistema = array();
+    $stmtLiquida = $pdo->query('SELECT TRIM(LISUC) AS sucursal, TRIM(LIFACTURA) AS factura, TRIM(LIPRESTADO) AS codigo FROM liquida');
+    while ($row = $stmtLiquida->fetch(PDO::FETCH_ASSOC)) {
+        $facturasEnSistema[$row['codigo'] . '|' . $row['sucursal'] . '|' . $row['factura']] = true;
+    }
     $data = array();
     $total = count($filas);
     for ($indice = 1; $indice < $total; $indice++) {
         $fila = $filas[$indice];
         $codigo = textoCeldaExcel(isset($fila[$colPrestador]) ? $fila[$colPrestador] : '');
+        if (trim($codigo) === '') {
+            continue;
+        }
         $comprobante = comprobanteConciliacion(
             isset($fila[$colSucursal]) ? $fila[$colSucursal] : '',
             isset($fila[$colNumero]) ? $fila[$colNumero] : ''
         );
-        $importe = textoCeldaExcel(isset($fila[$colImporte]) ? $fila[$colImporte] : '');
-        $saldo = textoCeldaExcel(isset($fila[$colSaldo]) ? $fila[$colSaldo] : '');
-        if (trim($codigo) === '' || trim($comprobante) === '') {
+        if (trim($comprobante) === '') {
             continue;
         }
-        $stmtPrestador->execute(array($codigo));
-        $rowPrestador = $stmtPrestador->fetch();
-        $nombrePrestador = ($rowPrestador && trim((string) $rowPrestador['NOMBRE']) !== '') ? trim((string) $rowPrestador['NOMBRE']) : 'Nombre no encontrado';
+        $importe = textoCeldaExcel(isset($fila[$colImporte]) ? $fila[$colImporte] : '');
+        $saldo = textoCeldaExcel(isset($fila[$colSaldo]) ? $fila[$colSaldo] : '');
+        $nombrePrestador = isset($diccionarioPrestadores[$codigo]) ? $diccionarioPrestadores[$codigo] : 'Nombre no encontrado';
+        $prestadorFinal = $codigo . ' - ' . $nombrePrestador;
+        $partesComp = explode('-', $comprobante);
+        $sucursal = isset($partesComp[0]) ? $partesComp[0] : '';
+        $factura = isset($partesComp[1]) ? $partesComp[1] : '';
+        $existeEnSistema = isset($facturasEnSistema[$codigo . '|' . $sucursal . '|' . $factura]);
+        if ($existeEnSistema) {
+            $estadoHtml = "<span class='bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded shadow-sm'><i class='fa-solid fa-circle-check mr-1'></i> En Sistema</span>";
+        } else {
+            $estadoHtml = "<span class='bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded shadow-sm'><i class='fa-solid fa-circle-xmark mr-1'></i> Faltante</span>";
+        }
         $data[] = array(
             'seleccion' => '<input type="checkbox" class="fila-seleccionada w-4 h-4 text-blue-600 rounded" checked>',
-            'codigo' => $codigo . ' - ' . $nombrePrestador,
+            'codigo' => $prestadorFinal,
             'comprobante' => $comprobante,
             'importe' => $importe,
             'saldo' => $saldo,
-            'estado' => "<span class='text-gray-500'>Pendiente</span>",
+            'estado' => $estadoHtml,
         );
     }
     echo json_encode(array('status' => 'ok', 'data' => $data));
