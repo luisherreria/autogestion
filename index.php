@@ -518,7 +518,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                     var url = 'descargar_pago.php?archivo=' + encodeURIComponent(archivo);
                     return '<a href="' + url + '" target="_blank" class="text-xs text-red-600 hover:underline"><i class="fa-solid fa-file-pdf"></i> ' + etiqueta + '</a>';
                 }
-                $('#tablaPagos').DataTable({
+                var tabla = $('#tablaPagos').DataTable({
                     ajax: 'ajax_pagos.php',
                     pageLength: 25,
                     lengthMenu: [[25, 50, 100, 500, -1], [25, 50, 100, 500, 'Todos']],
@@ -526,7 +526,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                     deferRender: true,
                     scrollX: true,
                     processing: true,
-                    dom: 'lBfrtip',
+                    dom: 'lfrtip',
                     buttons: [
                         {
                             extend: 'excel',
@@ -657,11 +657,10 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                             $(fila).addClass('fila-pagada');
                         }
                     },
-                    initComplete: function () {
-                        this.api().buttons().container().appendTo('#contenedorBotonesDT');
-                    },
                     language: idiomaTabla
                 });
+                new $.fn.dataTable.Buttons(tabla, { buttons: tabla.init().buttons });
+                tabla.buttons().container().appendTo('#contenedorExportacionLiq');
                 var columnaFiltroLiq = parseInt($('#campoFiltroLiq').val(), 10);
                 function aplicarFiltroLiq() {
                     var grilla = $('#tablaPagos').DataTable();
