@@ -8,12 +8,44 @@ if (!defined('PORTAL_AUTOGESTION')) {
 ?>
 <style>
     #tablaPagos tr.fila-pagada td { background-color: #dcfce7 !important; }
-    #tablaPagos td.num, #tablaPagos th.num { text-align: right; }
+    #tablaPagos td.num, #tablaPagos th.num { text-align: right; white-space: nowrap; }
     #tablaPagos td.nowrap, #tablaPagos th.nowrap { white-space: nowrap; }
     #tablaPagos_wrapper .dataTables_length,
     #tablaPagos_wrapper .dataTables_filter,
     #tablaPagos_wrapper .dt-buttons { margin-bottom: 0.75rem; }
+    #tablaPagos.texto-grilla-xs,
+    #tablaPagos.texto-grilla-xs th,
+    #tablaPagos.texto-grilla-xs td,
+    #tablaPagos.texto-grilla-xs td span { font-size: 11px !important; }
+    #contenedorBotonesDT .dt-button { padding: 0.35rem 0.6rem; }
 </style>
+<div id="contenedorBotonesDT" class="flex gap-2 mb-3"></div>
+<div class="flex flex-col md:flex-row md:items-end gap-3 mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+    <div class="flex-1">
+        <label for="campoFiltroLiq" class="block text-xs font-medium text-gray-700 mb-1">Filtrar por Campo:</label>
+        <select id="campoFiltroLiq" class="w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-xs px-2 py-1">
+            <option value="0">Periodo</option>
+            <option value="1">Prestador</option>
+            <option value="3">Factura</option>
+            <option value="11">Recibo</option>
+        </select>
+    </div>
+    <div class="flex-[2]">
+        <label for="valorFiltroLiq" class="block text-xs font-medium text-gray-700 mb-1">Valor:</label>
+        <div class="flex gap-2">
+            <input type="text" id="valorFiltroLiq" class="w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-xs px-2 py-1" placeholder="Escriba para filtrar...">
+            <button type="button" id="btnLimpiarFiltroLiq" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded text-xs">Limpiar</button>
+        </div>
+    </div>
+    <div>
+        <label for="controlTamanoLetra" class="block text-xs font-medium text-gray-700 mb-1"><i class="fa-solid fa-text-height mr-1"></i> Tamaño de grilla:</label>
+        <select id="controlTamanoLetra" class="border border-gray-300 rounded text-xs py-1 px-2 focus:ring-blue-500">
+            <option value="texto-grilla-xs">Pequeña</option>
+            <option value="text-sm" selected>Normal</option>
+            <option value="text-base">Grande</option>
+        </select>
+    </div>
+</div>
 <div class="bg-white rounded-xl shadow p-4">
     <table id="tablaPagos" class="display w-full text-sm">
         <thead>

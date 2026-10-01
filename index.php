@@ -460,7 +460,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
         function columnaImporte(campo) {
             return {
                 data: campo,
-                className: 'num text-right',
+                className: 'num text-right whitespace-nowrap',
                 render: function (dato, tipo) {
                     if (tipo === 'sort' || tipo === 'type') {
                         var limpio = String(dato == null ? '' : dato).replace(/\$/g, '').replace(/\s/g, '').replace(/\./g, '').replace(',', '.');
@@ -528,15 +528,26 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                     processing: true,
                     dom: 'lBfrtip',
                     buttons: [
-                        { extend: 'excel', text: 'Excel', exportOptions: { orthogonal: 'export' } },
+                        {
+                            extend: 'excel',
+                            text: '<i class="fa-solid fa-file-excel"></i>',
+                            titleAttr: 'Exportar a Excel',
+                            exportOptions: { orthogonal: 'export' }
+                        },
                         {
                             extend: 'pdf',
-                            text: 'PDF',
+                            text: '<i class="fa-solid fa-file-pdf"></i>',
+                            titleAttr: 'Exportar a PDF',
                             orientation: 'landscape',
                             pageSize: 'A4',
                             exportOptions: { orthogonal: 'export' }
                         },
-                        { extend: 'print', text: 'Imprimir', exportOptions: { orthogonal: 'export' } }
+                        {
+                            extend: 'print',
+                            text: '<i class="fa-solid fa-print"></i>',
+                            titleAttr: 'Imprimir',
+                            exportOptions: { orthogonal: 'export' }
+                        }
                     ],
                     columns: [
                         { data: 'periodo' },
@@ -646,7 +657,30 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                             $(fila).addClass('fila-pagada');
                         }
                     },
+                    initComplete: function () {
+                        this.api().buttons().container().appendTo('#contenedorBotonesDT');
+                    },
                     language: idiomaTabla
+                });
+                var columnaFiltroLiq = parseInt($('#campoFiltroLiq').val(), 10);
+                function aplicarFiltroLiq() {
+                    var grilla = $('#tablaPagos').DataTable();
+                    var columna = parseInt($('#campoFiltroLiq').val(), 10);
+                    var valor = $('#valorFiltroLiq').val();
+                    if (columnaFiltroLiq !== columna) {
+                        grilla.column(columnaFiltroLiq).search('');
+                        columnaFiltroLiq = columna;
+                    }
+                    grilla.column(columna).search(valor).draw();
+                }
+                $('#valorFiltroLiq').on('keyup change', aplicarFiltroLiq);
+                $('#campoFiltroLiq').on('change', aplicarFiltroLiq);
+                $('#btnLimpiarFiltroLiq').on('click', function () {
+                    $('#valorFiltroLiq').val('');
+                    aplicarFiltroLiq();
+                });
+                $('#controlTamanoLetra').on('change', function () {
+                    $('#tablaPagos').removeClass('texto-grilla-xs text-sm text-base').addClass(this.value);
                 });
             }
             if ($('#tablaNotificaciones').length && $.fn.dataTable) {
