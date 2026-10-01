@@ -14,7 +14,7 @@ try {
     $pdo = Database::getConnection();
     asegurarTablaNotificaciones($pdo);
     $stmt = $pdo->prepare(
-        'SELECT id_notificacion, cod_prestador, tipo_notificacion, archivo_adjunto
+        'SELECT id_notificacion, cod_prestador, tipo_notificacion, archivo_adjunto, remitente_mail, destinatarios_mail
          FROM notificaciones_historial
          WHERE id_notificacion = :id
          LIMIT 1'

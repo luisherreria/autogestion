@@ -619,6 +619,36 @@ function tiposNotificacionPermitidos()
     return $tipos;
 }
 
+function correosLineasSesion()
+{
+    $lineas = array('mail_auto', 'mail_deb', 'mail_pago', 'mailcontra');
+    $tipos = isset($_SESSION['tipos_correo']) && is_array($_SESSION['tipos_correo']) ? $_SESSION['tipos_correo'] : array();
+    $correos = array();
+    foreach ($tipos as $tipo) {
+        $tipo = trim((string) $tipo);
+        if (!in_array($tipo, $lineas, true)) {
+            continue;
+        }
+        $lista = isset($_SESSION[$tipo]) ? (string) $_SESSION[$tipo] : '';
+        $porComa = explode(',', $lista);
+        foreach ($porComa as $trozo) {
+            $porPuntoComa = explode(';', $trozo);
+            foreach ($porPuntoComa as $correo) {
+                $correo = strtolower(trim($correo));
+                if ($correo === '' || strpos($correo, '@') === false || in_array($correo, $correos, true)) {
+                    continue;
+                }
+                $correos[] = $correo;
+            }
+        }
+    }
+    $email = isset($_SESSION['email']) ? strtolower(trim($_SESSION['email'])) : '';
+    if ($email !== '' && strpos($email, '@') !== false && !in_array($email, $correos, true)) {
+        $correos[] = $email;
+    }
+    return $correos;
+}
+
 function filtroNotificaciones($soloNoLeidas)
 {
     $tipos = tiposNotificacionPermitidos();
@@ -637,8 +667,17 @@ function filtroNotificaciones($soloNoLeidas)
         $where[] = 'tipo_notificacion IN (' . implode(', ', $marcas) . ')';
     }
     if (!$esAdmin) {
-        $where[] = 'TRIM(cod_prestador) = :codigo';
+        $partes = array('TRIM(cod_prestador) = :codigo');
         $parametros[':codigo'] = isset($_SESSION['codigo']) ? trim($_SESSION['codigo']) : '';
+        $correos = correosLineasSesion();
+        foreach ($correos as $indice => $correo) {
+            $like = '%' . str_replace(array('%', '_'), array('\\%', '\\_'), $correo) . '%';
+            $partes[] = 'remitente_mail LIKE :email_rem' . $indice;
+            $partes[] = 'destinatarios_mail LIKE :email_des' . $indice;
+            $parametros[':email_rem' . $indice] = $like;
+            $parametros[':email_des' . $indice] = $like;
+        }
+        $where[] = '(' . implode(' OR ', $partes) . ')';
     }
     if ($soloNoLeidas) {
         $where[] = 'estado_lectura = 0';
@@ -662,7 +701,84 @@ function notificacionVisible($fila)
         return true;
     }
     $codigo = isset($_SESSION['codigo']) ? trim($_SESSION['codigo']) : '';
-    return $codigo !== '' && strcasecmp(trim((string) $fila['cod_prestador']), $codigo) === 0;
+    if ($codigo !== '' && strcasecmp(trim((string) $fila['cod_prestador']), $codigo) === 0) {
+        return true;
+    }
+    $remitente = isset($fila['remitente_mail']) ? strtolower((string) $fila['remitente_mail']) : '';
+    $destinatarios = isset($fila['destinatarios_mail']) ? strtolower((string) $fila['destinatarios_mail']) : '';
+    foreach (correosLineasSesion() as $correo) {
+        if (strpos($remitente, $correo) !== false || strpos($destinatarios, $correo) !== false) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function completarPrestadorNotificaciones($pdo)
+{
+    try {
+    $pendientes = $pdo->query(
+        "SELECT id_notificacion, destinatarios_mail
+         FROM notificaciones_historial
+         WHERE (cod_prestador IS NULL OR TRIM(cod_prestador) = '')
+           AND fecha_emision >= DATE_SUB(NOW(), INTERVAL 90 DAY)"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    if (count($pendientes) === 0) {
+        return;
+    }
+
+    $mapa = array();
+    $stmt = $pdo->query('SELECT TRIM(CODIGO) AS codigo, TRIM(NOMBRE) AS nombre, MAIL_AUTO, MAIL_DEB, MAIL_PAGO, MAILCONTRA FROM ebamp');
+    while ($fila = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $codigo = trim((string) $fila['codigo']);
+        if ($codigo === '') {
+            continue;
+        }
+        $lista = strtolower(str_replace(array('<', '>', '"'), ' ', $fila['MAIL_AUTO'] . ' ' . $fila['MAIL_DEB'] . ' ' . $fila['MAIL_PAGO'] . ' ' . $fila['MAILCONTRA']));
+        foreach (preg_split('/[\s,;]+/', $lista) as $correo) {
+            $correo = trim($correo);
+            if ($correo === '' || strpos($correo, '@') === false) {
+                continue;
+            }
+            if (!isset($mapa[$correo])) {
+                $mapa[$correo] = array();
+            }
+            $mapa[$correo][$codigo] = trim((string) $fila['nombre']);
+        }
+    }
+
+    $upd = $pdo->prepare(
+        'UPDATE notificaciones_historial
+         SET cod_prestador = :codigo, razon_social = :nombre
+         WHERE id_notificacion = :id
+           AND (cod_prestador IS NULL OR TRIM(cod_prestador) = \'\')'
+    );
+    foreach ($pendientes as $aviso) {
+        $texto = strtolower(str_replace(array('<', '>', '"'), ' ', (string) $aviso['destinatarios_mail']));
+        $unicos = array();
+        foreach (preg_split('/[\s,;]+/', $texto) as $correo) {
+            $correo = trim($correo);
+            if ($correo === '' || strpos($correo, '@') === false || !isset($mapa[$correo]) || count($mapa[$correo]) !== 1) {
+                continue;
+            }
+            $codigosCorreo = array_keys($mapa[$correo]);
+            $codigoCorreo = $codigosCorreo[0];
+            $unicos[$codigoCorreo] = $mapa[$correo][$codigoCorreo];
+        }
+        if (count($unicos) !== 1) {
+            continue;
+        }
+        $codigo = key($unicos);
+        $nombre = $unicos[$codigo];
+        $upd->execute(array(
+            ':codigo' => substr($codigo, 0, 20),
+            ':nombre' => substr($nombre, 0, 100),
+            ':id' => (int) $aviso['id_notificacion'],
+        ));
+    }
+    } catch (Exception $e) {
+        return;
+    }
 }
 
 function prestadorPuedeVerCarpeta($pdo, $carpeta)

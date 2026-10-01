@@ -98,6 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['tipos_correo'] = array();
             $_SESSION['permisos'] = permisosCompletos();
             cargarPerfilEnSesion();
+            completarPrestadorNotificaciones(Database::getConnection());
             header('Location: index.php');
             exit;
         } elseif ($adminEncontrado && !$adminClaveOk) {
@@ -118,6 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['tipos_correo'] = array();
             $_SESSION['permisos'] = permisosCompletos();
             cargarPerfilEnSesion();
+            completarPrestadorNotificaciones(Database::getConnection());
             header('Location: index.php');
             exit;
         } elseif ($clave !== $config['clave']) {
@@ -172,6 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['tipos_correo'] = $tiposEncontrados;
                 $_SESSION['permisos'] = permisosPorTipos($pdo, $tiposEncontrados);
                 cargarPerfilEnSesion();
+                completarPrestadorNotificaciones($pdo);
                 header('Location: index.php');
                 exit;
             }

@@ -34,6 +34,7 @@ if (!defined('PORTAL_AUTOGESTION')) {
                 <th class="nowrap">O.Pago</th>
                 <th class="nowrap">F. Pago</th>
                 <th>Archivos</th>
+                <th class="text-center">Notif.</th>
             </tr>
         </thead>
         <tbody></tbody>

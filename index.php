@@ -622,6 +622,17 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                                 }
                                 return '<div class="flex flex-col gap-1 items-center">' + debito + csn + '</div>';
                             }
+                        },
+                        {
+                            data: 'notificaciones',
+                            className: 'text-center nowrap',
+                            orderable: false,
+                            render: function (dato, tipo, fila) {
+                                if (tipo === 'export' || tipo === 'filter' || tipo === 'sort') {
+                                    return fila.notificaciones_txt || '';
+                                }
+                                return dato || '';
+                            }
                         }
                     ],
                     createdRow: function (fila, dato) {
@@ -672,7 +683,10 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                                 var id = parseInt(dato, 10) || 0;
                                 return '<button type="button" class="text-blue-800 hover:text-blue-950" title="Abrir correo" onclick="abrirNotificacion(' + id + ')"><i class="fa-solid fa-envelope"></i></button>';
                             }
-                        }
+                        },
+                        { data: 'remitente', visible: false, searchable: true },
+                        { data: 'destinatarios', visible: false, searchable: true },
+                        { data: 'correos_prestador', visible: false, searchable: true }
                     ],
                     language: idiomaTabla
                 });

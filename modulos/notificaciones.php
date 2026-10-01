@@ -17,6 +17,9 @@ if (!defined('PORTAL_AUTOGESTION')) {
                 <th class="border-b p-2">Asunto</th>
                 <th class="border-b p-2">Tipo notificación</th>
                 <th class="border-b p-2 text-center">Acciones</th>
+                <th class="hidden">Remitente</th>
+                <th class="hidden">Destinatarios</th>
+                <th class="hidden">Correos del prestador</th>
             </tr>
         </thead>
         <tbody></tbody>

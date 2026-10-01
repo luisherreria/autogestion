@@ -97,6 +97,53 @@ function textoOGuion($valor)
 }
 
 $esAdmin = isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin';
+function textoEstadoMail($estado)
+{
+    if ($estado === null || $estado === '') {
+        return 'No enviado';
+    }
+    if ((string) $estado === '0') {
+        return 'Enviado (no leído)';
+    }
+    return 'Leído';
+}
+
+function iconoMailLiquidacion($estado, $letra)
+{
+    $titulo = textoEstadoMail($estado);
+    $clase = 'text-gray-300';
+    $icono = 'fa-envelope';
+    if ($estado !== null && $estado !== '') {
+        if ((string) $estado === '0') {
+            $clase = 'text-blue-500';
+        } else {
+            $clase = 'text-green-500';
+            $icono = 'fa-envelope-open';
+        }
+    }
+    return '<span title="' . $titulo . '" class="fa-stack ' . $clase . '" style="font-size: 0.7em;">'
+        . '<i class="fa-solid ' . $icono . ' fa-stack-2x"></i>'
+        . '<span class="fa-stack-1x font-bold text-white" style="font-size: 0.6em; margin-top: 3px;">' . $letra . '</span>'
+        . '</span>';
+}
+
+function mapaMailsLiquidacion($pdo)
+{
+    $mapa = array();
+    $stmt = $pdo->query(
+        "SELECT TRIM(cod_prestador) AS cod, TRIM(nro_comprobante) AS comp, TRIM(obra_social) AS os,
+                tipo_notificacion, estado_lectura
+         FROM notificaciones_historial
+         WHERE tipo_notificacion IN ('PAGO', 'RESUMEN')
+         ORDER BY fecha_emision ASC, id_notificacion ASC"
+    );
+    while ($fila = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $clave = $fila['cod'] . '|' . $fila['comp'] . '|' . $fila['os'] . '|' . $fila['tipo_notificacion'];
+        $mapa[$clave] = $fila['estado_lectura'];
+    }
+    return $mapa;
+}
+
 $codigoPrestador = isset($_SESSION['codigo']) ? trim($_SESSION['codigo']) : '';
 if (!$esAdmin && !tienePermiso('pagos')) {
     echo json_encode(array('data' => array()));
@@ -104,13 +151,13 @@ if (!$esAdmin && !tienePermiso('pagos')) {
 }
 
 try {
+    $pdo = Database::getConnection();
     $config = appConfig();
     $directorioPdf = isset($config['dirs']['comprobantes']) ? $config['dirs']['comprobantes'] : dirname(__FILE__) . '/archivos/comprobantes';
     $mapas = mapaPdfsPagos($directorioPdf);
     $directorioTango = dirname(__FILE__) . '/../uploads/pdftango';
     $mapasTango = mapaPdfsTango($directorioTango);
-
-    $pdo = Database::getConnection();
+    $mailsLiquidacion = mapaMailsLiquidacion($pdo);
     $columnas = array();
     foreach ($pdo->query('SHOW COLUMNS FROM liquida') as $columna) {
         $columnas[strtoupper($columna['Field'])] = $columna;
@@ -192,6 +239,22 @@ try {
                 $retencionPdf = $mapasTango['retenciones'][$opRetencion];
             }
         }
+        $comprobanteMail = trim((string) $fila['LISUC']) . '-' . trim((string) $fila['LIFACTURA']);
+        $comprobanteRelleno = $suc . '-' . $factura;
+        $baseMail = trim((string) $fila['LIPRESTADO']) . '|' . $comprobanteMail . '|' . trim((string) $fila['LIOBRASOC']);
+        $baseMailRelleno = trim((string) $fila['LIPRESTADO']) . '|' . $comprobanteRelleno . '|' . trim((string) $fila['LIOBRASOC']);
+        $mailPago = null;
+        $mailResumen = null;
+        if (isset($mailsLiquidacion[$baseMail . '|PAGO'])) {
+            $mailPago = $mailsLiquidacion[$baseMail . '|PAGO'];
+        } elseif (isset($mailsLiquidacion[$baseMailRelleno . '|PAGO'])) {
+            $mailPago = $mailsLiquidacion[$baseMailRelleno . '|PAGO'];
+        }
+        if (isset($mailsLiquidacion[$baseMail . '|RESUMEN'])) {
+            $mailResumen = $mailsLiquidacion[$baseMail . '|RESUMEN'];
+        } elseif (isset($mailsLiquidacion[$baseMailRelleno . '|RESUMEN'])) {
+            $mailResumen = $mailsLiquidacion[$baseMailRelleno . '|RESUMEN'];
+        }
         $data[] = array(
             'periodo' => $periodo,
             'prestador' => trim((string) $fila['LIPRESTADO']),
@@ -215,6 +278,8 @@ try {
             'retencion' => $retencion,
             'retencion_pdf' => $retencionPdf,
             'pagada' => ($pagado > 0 && $saldo == 0) ? 1 : 0,
+            'notificaciones' => '<div class="flex gap-2 justify-center">' . iconoMailLiquidacion($mailPago, 'P') . iconoMailLiquidacion($mailResumen, 'R') . '</div>',
+            'notificaciones_txt' => 'P: ' . textoEstadoMail($mailPago) . ' | R: ' . textoEstadoMail($mailResumen),
         );
     }
 
