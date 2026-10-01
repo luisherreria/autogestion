@@ -138,7 +138,16 @@ function iniciarConciliacion() {
         columns: [
             { data: 'seleccion', orderable: false, searchable: false, className: 'text-center' },
             { data: 'codigo' },
-            { data: 'fecha', className: 'nowrap' },
+            {
+                data: 'fecha',
+                className: 'nowrap',
+                render: function (dato, tipo, fila) {
+                    if (tipo === 'sort' || tipo === 'type') {
+                        return fila.fecha_orden || '';
+                    }
+                    return dato || '';
+                }
+            },
             { data: 'comprobante' },
             { data: 'importe', className: 'text-right' },
             { data: 'saldo', className: 'text-right' },

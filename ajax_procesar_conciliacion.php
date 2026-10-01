@@ -50,6 +50,49 @@ function digitosExcel($valor)
     return preg_replace('/[^0-9]/', '', textoCeldaExcel($valor));
 }
 
+function fechaConciliacion($hoja, $columna, $filaExcel, $valorFormateado)
+{
+    $resultado = array('texto' => '', 'orden' => '');
+    $marca = null;
+    if ($columna !== null) {
+        $coordenada = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($columna + 1) . $filaExcel;
+        $celda = $hoja->getCell($coordenada);
+        $valor = $celda->getValue();
+        if (is_numeric($valor) && \PhpOffice\PhpSpreadsheet\Shared\Date::isDateTime($celda)) {
+            $marca = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($valor);
+        }
+    }
+    if ($marca === null && $valorFormateado !== '' && $valorFormateado !== null && is_numeric($valorFormateado)) {
+        $marca = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($valorFormateado);
+    }
+    if ($marca === null) {
+        $texto = trim((string) $valorFormateado);
+        if (preg_match('/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/', $texto, $partes)) {
+            $primero = (int) $partes[1];
+            $segundo = (int) $partes[2];
+            $anio = (int) $partes[3];
+            if ($segundo > 12) {
+                $mes = $primero;
+                $dia = $segundo;
+            } elseif ($primero > 12) {
+                $dia = $primero;
+                $mes = $segundo;
+            } else {
+                $mes = $primero;
+                $dia = $segundo;
+            }
+            if (checkdate($mes, $dia, $anio)) {
+                $marca = DateTime::createFromFormat('Y-n-j', $anio . '-' . $mes . '-' . $dia);
+            }
+        }
+    }
+    if ($marca instanceof DateTime) {
+        $resultado['texto'] = $marca->format('d/m/Y');
+        $resultado['orden'] = $marca->format('Y-m-d');
+    }
+    return $resultado;
+}
+
 function comprobanteConciliacion($sucursal, $numero)
 {
     $sucursal = digitosExcel($sucursal);
@@ -174,16 +217,9 @@ try {
         $saldo = textoCeldaExcel(isset($fila[$colSaldo]) ? $fila[$colSaldo] : '');
         $nombrePrestador = isset($diccionarioPrestadores[$codigo]) ? $diccionarioPrestadores[$codigo] : 'Nombre no encontrado';
         $prestadorFinal = $codigo . ' - ' . $nombrePrestador;
-        $fechaFormateada = '';
         $fechaRaw = ($colFecha !== null && isset($fila[$colFecha])) ? $fila[$colFecha] : '';
-        if ($fechaRaw !== '' && $fechaRaw !== null) {
-            if (is_numeric($fechaRaw)) {
-                $fechaObj = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($fechaRaw);
-                $fechaFormateada = $fechaObj->format('d/m/Y');
-            } else {
-                $fechaFormateada = trim((string) $fechaRaw);
-            }
-        }
+        $fecha = fechaConciliacion($hoja, $colFecha, $indice + 1, $fechaRaw);
+        $fechaFormateada = $fecha['texto'];
         $partesComp = explode('-', $comprobante);
         $sucursal = isset($partesComp[0]) ? $partesComp[0] : '';
         $factura = isset($partesComp[1]) ? $partesComp[1] : '';
@@ -201,6 +237,7 @@ try {
             'seleccion' => '<input type="checkbox" class="fila-seleccionada w-4 h-4 text-blue-600 rounded" checked>',
             'codigo' => $prestadorFinal,
             'fecha' => $fechaFormateada,
+            'fecha_orden' => $fecha['orden'],
             'comprobante' => $comprobante,
             'importe' => $importe,
             'saldo' => $saldo,
