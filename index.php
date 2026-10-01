@@ -18,6 +18,7 @@ $secciones = array(
     'admin_archivos' => array('titulo' => 'Gestión de Archivos', 'icono' => 'fa-cloud-arrow-up', 'solo_admin' => true),
     'auditoria_vista' => array('titulo' => 'Control de Auditoría', 'icono' => 'fa-clipboard-list', 'solo_admin' => true),
     'admin_permisos' => array('titulo' => 'Gestión de Permisos', 'icono' => 'fa-user-lock', 'solo_admin' => true),
+    'conciliacion' => array('titulo' => 'Conciliador de Saldos', 'icono' => 'fa-scale-balanced', 'solo_admin' => true),
 );
 
 if (!empty($GLOBALS['forzarSeccion'])) {
@@ -291,7 +292,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                 </a>
             <?php } ?>
             <?php if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') { ?>
-                <details class="border-t border-slate-700" <?php echo ($seccion === 'admin_archivos' || $seccion === 'auditoria_vista' || $seccion === 'admin_permisos') ? 'open' : ''; ?>>
+                <details class="border-t border-slate-700" <?php echo ($seccion === 'admin_archivos' || $seccion === 'auditoria_vista' || $seccion === 'admin_permisos' || $seccion === 'conciliacion') ? 'open' : ''; ?>>
                     <summary class="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer hover:bg-slate-800 list-none">
                         <i class="fa-solid fa-user-shield w-5 text-center"></i>
                         <span class="flex-1">Administrador</span>
@@ -311,6 +312,11 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                        class="nav-portal flex items-center gap-3 pl-10 pr-4 py-2 text-sm hover:bg-slate-800 <?php echo $seccion === 'admin_permisos' ? 'bg-slate-800 text-white' : ''; ?>">
                         <i class="fa-solid fa-user-lock w-5 text-center"></i>
                         <span>Gestión de Permisos</span>
+                    </a>
+                    <a href="index.php?seccion=conciliacion"
+                       class="nav-portal flex items-center gap-3 pl-10 pr-4 py-2 text-sm hover:bg-slate-800 <?php echo $seccion === 'conciliacion' ? 'bg-slate-800 text-white' : ''; ?>">
+                        <i class="fa-solid fa-scale-balanced w-5 text-center"></i>
+                        <span>Conciliador de Saldos</span>
                     </a>
                 </details>
             <?php } ?>
