@@ -81,25 +81,31 @@ function iniciarConciliacion() {
         }
     });
 
+    var timeoutSuma;
+
     function calcularTotalesSeleccionados() {
         var totalImporte = 0;
         var totalSaldo = 0;
         var grilla = $('#tablaConciliacion').DataTable();
 
         grilla.rows({ search: 'applied' }).nodes().to$().find('.fila-seleccionada:checked').each(function () {
-            var fila = $(this).closest('tr');
-            var textoImporte = fila.find('td').eq(3).text() || '0';
-            var textoSaldo = fila.find('td').eq(4).text() || '0';
-            var valorImporte = parseFloat(textoImporte.replace(/[^0-9.-]+/g, '')) || 0;
-            var valorSaldo = parseFloat(textoSaldo.replace(/[^0-9.-]+/g, '')) || 0;
-            totalImporte += valorImporte;
-            totalSaldo += valorSaldo;
+            var fila = this.closest('tr');
+            var textoImporte = fila.cells[3].innerText || '0';
+            var textoSaldo = fila.cells[4].innerText || '0';
+            totalImporte += parseFloat(textoImporte.replace(/[^0-9.-]+/g, '')) || 0;
+            totalSaldo += parseFloat(textoSaldo.replace(/[^0-9.-]+/g, '')) || 0;
         });
 
         var formato = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
         $('#totalImporteSelect').html(formato.format(totalImporte));
         $('#totalSaldoSelect').html(formato.format(totalSaldo));
     }
+
+    $('#tablaConciliacion').off('search.dt draw.dt');
+    $('#tablaConciliacion').on('draw.dt', function () {
+        clearTimeout(timeoutSuma);
+        timeoutSuma = setTimeout(calcularTotalesSeleccionados, 150);
+    });
 
     $('#tablaConciliacion tbody').off('change', '.fila-seleccionada').on('change', '.fila-seleccionada', function () {
         calcularTotalesSeleccionados();
@@ -108,15 +114,7 @@ function iniciarConciliacion() {
     $('#checkAll').off('change').on('change', function () {
         var grilla = $('#tablaConciliacion').DataTable();
         var isChecked = $(this).is(':checked');
-        grilla.rows().nodes().to$().find('.fila-seleccionada').prop('checked', isChecked);
-        calcularTotalesSeleccionados();
-    });
-
-    $('#tablaConciliacion').on('draw.dt', function () {
-        calcularTotalesSeleccionados();
-    });
-
-    $('#tablaConciliacion').on('search.dt', function () {
+        grilla.rows({ search: 'applied' }).nodes().to$().find('.fila-seleccionada').prop('checked', isChecked);
         calcularTotalesSeleccionados();
     });
 
