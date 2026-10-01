@@ -26,12 +26,38 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'admin') {
     </form>
 </div>
 
+<style>
+#tablaConciliacion_wrapper .dt-button {
+    background-image: none;
+    border: none;
+}
+#tablaConciliacion_wrapper .buttons-excel { background-color: #16a34a; color: #fff; }
+#tablaConciliacion_wrapper .buttons-pdf { background-color: #dc2626; color: #fff; }
+#tablaConciliacion_wrapper .buttons-print { background-color: #4b5563; color: #fff; }
+</style>
+<div class="flex flex-col md:flex-row gap-4 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+    <div class="flex-1">
+        <label for="filtroPrestador" class="block text-sm font-medium text-gray-700 mb-1">Filtrar por Prestador:</label>
+        <input type="text" id="filtroPrestador" class="w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm px-3 py-2" placeholder="Ej: CLI011 o Santa Isabel">
+    </div>
+    <div class="flex-1">
+        <label for="filtroEstado" class="block text-sm font-medium text-gray-700 mb-1">Filtrar por Estado:</label>
+        <select id="filtroEstado" class="w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm px-3 py-2">
+            <option value="">Todos los estados</option>
+            <option value="Faltante">Faltantes</option>
+            <option value="En Auditoría">En Auditoría</option>
+            <option value="En Sistema">En Sistema</option>
+        </select>
+    </div>
+</div>
+
 <div class="bg-white rounded-xl shadow overflow-x-auto p-4">
     <table id="tablaConciliacion" class="display w-full text-sm">
         <thead>
             <tr>
                 <th class="text-center"><input type="checkbox" id="checkAll" checked></th>
                 <th>Prestador</th>
+                <th>Fecha</th>
                 <th>Comprobante</th>
                 <th class="text-right">Importe Excel</th>
                 <th class="text-right">Saldo Excel</th>
@@ -41,7 +67,7 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'admin') {
         <tbody></tbody>
         <tfoot>
             <tr>
-                <th colspan="3" class="text-right">Totales Seleccionados:</th>
+                <th colspan="4" class="text-right">Totales Seleccionados:</th>
                 <th id="totalImporteSelect" class="text-right">$ 0,00</th>
                 <th id="totalSaldoSelect" class="text-right">$ 0,00</th>
                 <th></th>
@@ -60,10 +86,59 @@ function iniciarConciliacion() {
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100, 500, -1], [10, 25, 50, 100, 500, 'Todas']],
         deferRender: false,
-        order: [],
+        dom: '<"flex flex-col md:flex-row justify-between items-center mb-4" <"flex items-center gap-4"l B> f> rt <"flex justify-between items-center mt-4" i p>',
+        buttons: [
+            {
+                extend: 'excelHtml5',
+                text: '<i class="fa-solid fa-file-excel mr-1"></i> Excel',
+                className: 'bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded shadow-sm text-sm border-none ml-2',
+                title: 'Conciliador de Saldos',
+                exportOptions: {
+                    columns: [1, 2, 3, 4, 5, 6],
+                    format: {
+                        body: function (dato) {
+                            return $('<div>').html(dato).text().trim();
+                        }
+                    }
+                }
+            },
+            {
+                extend: 'pdfHtml5',
+                text: '<i class="fa-solid fa-file-pdf mr-1"></i> PDF',
+                className: 'bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded shadow-sm text-sm border-none ml-2',
+                title: 'Conciliador de Saldos',
+                orientation: 'landscape',
+                exportOptions: {
+                    columns: [1, 2, 3, 4, 5, 6],
+                    format: {
+                        body: function (dato) {
+                            return $('<div>').html(dato).text().trim();
+                        }
+                    }
+                }
+            },
+            {
+                extend: 'print',
+                text: '<i class="fa-solid fa-print mr-1"></i> Imprimir',
+                className: 'bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded shadow-sm text-sm border-none ml-2',
+                exportOptions: {
+                    columns: [1, 2, 3, 4, 5, 6],
+                    format: {
+                        body: function (dato) {
+                            return $('<div>').html(dato).text().trim();
+                        }
+                    }
+                }
+            }
+        ],
+        columnDefs: [
+            { orderable: false, targets: 0 }
+        ],
+        order: [[1, 'asc']],
         columns: [
             { data: 'seleccion', orderable: false, searchable: false, className: 'text-center' },
             { data: 'codigo' },
+            { data: 'fecha', className: 'nowrap' },
             { data: 'comprobante' },
             { data: 'importe', className: 'text-right' },
             { data: 'saldo', className: 'text-right' },
@@ -90,8 +165,8 @@ function iniciarConciliacion() {
 
         grilla.rows({ search: 'applied' }).nodes().to$().find('.fila-seleccionada:checked').each(function () {
             var fila = this.closest('tr');
-            var textoImporte = fila.cells[3].innerText || '0';
-            var textoSaldo = fila.cells[4].innerText || '0';
+            var textoImporte = fila.cells[4].innerText || '0';
+            var textoSaldo = fila.cells[5].innerText || '0';
             totalImporte += parseFloat(textoImporte.replace(/[^0-9.-]+/g, '')) || 0;
             totalSaldo += parseFloat(textoSaldo.replace(/[^0-9.-]+/g, '')) || 0;
         });
@@ -100,6 +175,14 @@ function iniciarConciliacion() {
         $('#totalImporteSelect').html(formato.format(totalImporte));
         $('#totalSaldoSelect').html(formato.format(totalSaldo));
     }
+
+    $('#filtroPrestador').on('keyup change clear', function () {
+        tabla.column(1).search(this.value).draw();
+    });
+
+    $('#filtroEstado').on('change', function () {
+        tabla.column(6).search(this.value).draw();
+    });
 
     $('#tablaConciliacion').off('search.dt draw.dt');
     $('#tablaConciliacion').on('draw.dt', function () {

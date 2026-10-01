@@ -93,6 +93,10 @@ try {
     if ($colSucursal !== null) {
         $usados[$colSucursal] = true;
     }
+    $colFecha = buscarColumnaExcel($titulos, array('fecha fact', 'emision', 'fecha'), $usados);
+    if ($colFecha !== null) {
+        $usados[$colFecha] = true;
+    }
     $colNumero = buscarColumnaExcel($titulos, array('factura', 'numero', 'nro'), $usados);
     if ($colNumero !== null) {
         $usados[$colNumero] = true;
@@ -146,6 +150,11 @@ try {
     while ($row = $stmtLiquida->fetch(PDO::FETCH_ASSOC)) {
         $facturasEnSistema[$row['codigo'] . '|' . $row['sucursal'] . '|' . $row['factura']] = true;
     }
+    $facturasEnAuditoria = array();
+    $stmtAuditoria = $pdo->query('SELECT TRIM(COSUCFAC) AS sucursal, TRIM(CONROFAC) AS factura, TRIM(COPRESTADO) AS codigo FROM consulta');
+    while ($row = $stmtAuditoria->fetch(PDO::FETCH_ASSOC)) {
+        $facturasEnAuditoria[$row['codigo'] . '|' . $row['sucursal'] . '|' . $row['factura']] = true;
+    }
     $data = array();
     $total = count($filas);
     for ($indice = 1; $indice < $total; $indice++) {
@@ -165,18 +174,33 @@ try {
         $saldo = textoCeldaExcel(isset($fila[$colSaldo]) ? $fila[$colSaldo] : '');
         $nombrePrestador = isset($diccionarioPrestadores[$codigo]) ? $diccionarioPrestadores[$codigo] : 'Nombre no encontrado';
         $prestadorFinal = $codigo . ' - ' . $nombrePrestador;
+        $fechaFormateada = '';
+        $fechaRaw = ($colFecha !== null && isset($fila[$colFecha])) ? $fila[$colFecha] : '';
+        if ($fechaRaw !== '' && $fechaRaw !== null) {
+            if (is_numeric($fechaRaw)) {
+                $fechaObj = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($fechaRaw);
+                $fechaFormateada = $fechaObj->format('d/m/Y');
+            } else {
+                $fechaFormateada = trim((string) $fechaRaw);
+            }
+        }
         $partesComp = explode('-', $comprobante);
         $sucursal = isset($partesComp[0]) ? $partesComp[0] : '';
         $factura = isset($partesComp[1]) ? $partesComp[1] : '';
-        $existeEnSistema = isset($facturasEnSistema[$codigo . '|' . $sucursal . '|' . $factura]);
+        $claveFactura = $codigo . '|' . $sucursal . '|' . $factura;
+        $existeEnSistema = isset($facturasEnSistema[$claveFactura]);
+        $existeEnAuditoria = isset($facturasEnAuditoria[$claveFactura]);
         if ($existeEnSistema) {
             $estadoHtml = "<span class='bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded shadow-sm'><i class='fa-solid fa-circle-check mr-1'></i> En Sistema</span>";
+        } elseif ($existeEnAuditoria) {
+            $estadoHtml = "<span class='bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded shadow-sm'><i class='fa-solid fa-clock mr-1'></i> En Auditoría</span>";
         } else {
             $estadoHtml = "<span class='bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded shadow-sm'><i class='fa-solid fa-circle-xmark mr-1'></i> Faltante</span>";
         }
         $data[] = array(
             'seleccion' => '<input type="checkbox" class="fila-seleccionada w-4 h-4 text-blue-600 rounded" checked>',
             'codigo' => $prestadorFinal,
+            'fecha' => $fechaFormateada,
             'comprobante' => $comprobante,
             'importe' => $importe,
             'saldo' => $saldo,
