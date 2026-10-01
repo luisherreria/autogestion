@@ -99,9 +99,6 @@ function textoOGuion($valor)
 $esAdmin = isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin';
 function textoEstadoMail($estado)
 {
-    if ($estado === null || $estado === '') {
-        return 'No enviado';
-    }
     if ((string) $estado === '0') {
         return 'Enviado (no leído)';
     }
@@ -110,21 +107,44 @@ function textoEstadoMail($estado)
 
 function iconoMailLiquidacion($estado, $letra)
 {
+    if ($estado === null || $estado === '') {
+        return '';
+    }
     $titulo = textoEstadoMail($estado);
-    $clase = 'text-gray-300';
+    $clase = 'text-blue-500';
     $icono = 'fa-envelope';
-    if ($estado !== null && $estado !== '') {
-        if ((string) $estado === '0') {
-            $clase = 'text-blue-500';
-        } else {
-            $clase = 'text-green-500';
-            $icono = 'fa-envelope-open';
-        }
+    if ((string) $estado !== '0') {
+        $clase = 'text-green-500';
+        $icono = 'fa-envelope-open';
     }
     return '<span title="' . $titulo . '" class="fa-stack ' . $clase . '" style="font-size: 0.7em;">'
         . '<i class="fa-solid ' . $icono . ' fa-stack-2x"></i>'
         . '<span class="fa-stack-1x font-bold text-white" style="font-size: 0.6em; margin-top: 3px;">' . $letra . '</span>'
         . '</span>';
+}
+
+function columnaMailsLiquidacion($mailPago, $mailResumen)
+{
+    $iconos = iconoMailLiquidacion($mailPago, 'P') . iconoMailLiquidacion($mailResumen, 'R');
+    if ($iconos === '') {
+        return '-';
+    }
+    return '<div class="flex gap-2 justify-center">' . $iconos . '</div>';
+}
+
+function textoMailsLiquidacion($mailPago, $mailResumen)
+{
+    $partes = array();
+    if ($mailPago !== null && $mailPago !== '') {
+        $partes[] = 'P: ' . textoEstadoMail($mailPago);
+    }
+    if ($mailResumen !== null && $mailResumen !== '') {
+        $partes[] = 'R: ' . textoEstadoMail($mailResumen);
+    }
+    if (count($partes) === 0) {
+        return '-';
+    }
+    return implode(' | ', $partes);
 }
 
 function mapaMailsLiquidacion($pdo)
@@ -278,8 +298,8 @@ try {
             'retencion' => $retencion,
             'retencion_pdf' => $retencionPdf,
             'pagada' => ($pagado > 0 && $saldo == 0) ? 1 : 0,
-            'notificaciones' => '<div class="flex gap-2 justify-center">' . iconoMailLiquidacion($mailPago, 'P') . iconoMailLiquidacion($mailResumen, 'R') . '</div>',
-            'notificaciones_txt' => 'P: ' . textoEstadoMail($mailPago) . ' | R: ' . textoEstadoMail($mailResumen),
+            'notificaciones' => columnaMailsLiquidacion($mailPago, $mailResumen),
+            'notificaciones_txt' => textoMailsLiquidacion($mailPago, $mailResumen),
         );
     }
 
