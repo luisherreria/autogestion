@@ -242,6 +242,9 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                 <i class="fa-solid fa-bell text-lg"></i>
                 <span id="badge-notificaciones" class="hidden absolute -top-2 -right-2 min-w-[1.1rem] h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold items-center justify-center">0</span>
             </a>
+            <a href="help/manual_autogestion.pdf" target="_blank" title="Ver Manual de Usuario" class="inline-flex items-center text-white hover:text-blue-100 transition-colors">
+                <i class="fa-solid fa-circle-question text-lg"></i>
+            </a>
             <a href="logout.php" class="bg-blue-950 hover:bg-black text-white text-sm rounded-lg px-3 py-2">
                 <i class="fa-solid fa-right-from-bracket mr-1"></i> Cerrar sesión
             </a>
