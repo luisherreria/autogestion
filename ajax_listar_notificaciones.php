@@ -11,7 +11,7 @@ try {
     asegurarTablaNotificaciones($pdo);
     $correosPorCodigo = array();
     $stmtCorreos = $pdo->query(
-        'SELECT TRIM(CODIGO) AS codigo, MAIL_AUTO, MAIL_DEB, MAIL_PAGO, MAILCONTRA FROM ebamp'
+        'SELECT TRIM(CODIGO) AS codigo, MAIL_AUTO, MAIL_DEB, MAIL_PAGO, MAILCONTRA FROM cartilla.ebamp'
     );
     while ($prestador = $stmtCorreos->fetch(PDO::FETCH_ASSOC)) {
         $codigoPrestador = trim((string) $prestador['codigo']);

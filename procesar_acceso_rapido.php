@@ -20,7 +20,7 @@ try {
     $pdo = Database::getConnection();
     $stmt = $pdo->prepare(
         'SELECT CODIGO, NOMBRE, MAIL, MAIL_AUTO, MAIL_DEB, MAIL_PAGO, MAILCONTRA
-         FROM ebamp
+         FROM cartilla.ebamp
          WHERE TRIM(CODIGO) = :codigo
          LIMIT 1'
     );

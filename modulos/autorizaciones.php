@@ -15,12 +15,12 @@ $desdeTexto = date('d/m/Y', strtotime($desde));
 $hastaTexto = date('d/m/Y');
 
 $sqlAmbulatorio = "SELECT auto_id, CONUMERO AS conumero, COFECHA AS cofecha, CONOMPAC AS conompac, COESTADO AS coestado, CONROAUTO AS conroauto, COPRESTADO AS codigo_prestador, 'AMBULATORIO' AS origen
-        FROM ordenes
+        FROM cartilla.ordenes
         WHERE COFECHA >= :desde_ambu
           AND COFECHA < :hasta_ambu
           AND COESTADO IN ('AUTORIZADA', 'RECHAZADA')";
 $sqlSanatorial = "SELECT auto_id, conumero, cofecha, conompac, coestado, conroauto, COPRESTADO AS codigo_prestador, 'SANATORIAL' AS origen
-        FROM sanorden
+        FROM cartilla.sanorden
         WHERE cofecha >= :desde_sano
           AND cofecha < :hasta_sano
           AND coestado IN ('AUTORIZADA', 'RECHAZADA')";

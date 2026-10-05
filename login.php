@@ -132,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $like = '%' . str_replace(array('%', '_'), array('\\%', '\\_'), strtolower($usuario)) . '%';
             $stmt = $pdo->prepare(
                 'SELECT CODIGO, NOMBRE, MAIL_AUTO, MAIL_DEB, MAIL_PAGO, MAILCONTRA
-                 FROM ebamp
+                 FROM cartilla.ebamp
                  WHERE (LOWER(IFNULL(MAIL_AUTO, \'\')) LIKE :mail_auto
                     OR LOWER(IFNULL(MAIL_DEB, \'\')) LIKE :mail_deb
                     OR LOWER(IFNULL(MAIL_PAGO, \'\')) LIKE :mail_pago

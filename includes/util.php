@@ -156,7 +156,7 @@ function prestadorPorCodigo($pdo, $codigo)
     }
     $stmt = $pdo->prepare(
         'SELECT TRIM(CODIGO) AS codigo, TRIM(NOMBRE) AS nombre
-         FROM EBAMP
+         FROM cartilla.EBAMP
          WHERE TRIM(CODIGO) = :codigo
          LIMIT 1'
     );
@@ -185,7 +185,7 @@ function buscarPrestadores($pdo, $texto, $limite)
 
     $like = '%' . $texto . '%';
     $sql = 'SELECT TRIM(CODIGO) AS codigo, TRIM(NOMBRE) AS nombre
-            FROM EBAMP
+            FROM cartilla.EBAMP
             WHERE TRIM(CODIGO) LIKE :por_codigo
                OR NOMBRE LIKE :por_nombre
             GROUP BY TRIM(CODIGO), TRIM(NOMBRE)
@@ -256,7 +256,7 @@ function codigosCarpetasPrestador($pdo, $codigo)
 
     $stmt = $pdo->prepare(
         "SELECT DISTINCT TRIM(obrasoc) AS codigo
-         FROM obramed
+         FROM cartilla.obramed
          WHERE TRIM(medico) = :codigo
            AND (fechabaja IS NULL OR fechabaja = '0000-00-00' OR fechabaja > CURDATE())"
     );
@@ -369,7 +369,7 @@ function codigosObraSocialSesion($pdo, $codigoPrestador)
 
     $stmt = $pdo->prepare(
         "SELECT DISTINCT TRIM(obrasoc) AS codigo
-         FROM obramed
+         FROM cartilla.obramed
          WHERE TRIM(medico) = :codigo
            AND (fechabaja IS NULL OR fechabaja = '0000-00-00' OR fechabaja > CURDATE())"
     );
@@ -544,7 +544,7 @@ function tiposCorreoPorCodigo($pdo, $codigo, $email)
     }
     $stmt = $pdo->prepare(
         'SELECT MAIL_AUTO, MAIL_DEB, MAIL_PAGO, MAILCONTRA
-         FROM ebamp
+         FROM cartilla.ebamp
          WHERE TRIM(CODIGO) = :codigo
          ORDER BY CODIGO ASC'
     );
@@ -725,7 +725,7 @@ function completarPrestadorNotificaciones($pdo)
     }
 
     $mapa = array();
-    $stmt = $pdo->query('SELECT TRIM(CODIGO) AS codigo, TRIM(NOMBRE) AS nombre, MAIL_AUTO, MAIL_DEB, MAIL_PAGO, MAILCONTRA FROM ebamp');
+    $stmt = $pdo->query('SELECT TRIM(CODIGO) AS codigo, TRIM(NOMBRE) AS nombre, MAIL_AUTO, MAIL_DEB, MAIL_PAGO, MAILCONTRA FROM cartilla.ebamp');
     while ($fila = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $codigo = trim((string) $fila['codigo']);
         if ($codigo === '') {

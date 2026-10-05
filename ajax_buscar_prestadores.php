@@ -54,7 +54,7 @@ try {
     $pdo = Database::getConnection();
     $stmt = $pdo->prepare(
         'SELECT CODIGO, NOMBRE, NOMFANTAS, MAIL, MAIL_AUTO, MAIL_PAGO, MAIL_DEB, MAILCONTRA
-         FROM ebamp
+         FROM cartilla.ebamp
          WHERE (NOMBRE LIKE :nombre OR NOMFANTAS LIKE :fantas OR CODIGO LIKE :codigo)
            AND (FECHABAJA IS NULL
             OR FECHABAJA = \'0000-00-00\'

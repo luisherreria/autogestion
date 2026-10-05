@@ -41,7 +41,7 @@ try {
         ':posnet' => $busqueda,
     );
     if ($codigo !== '') {
-        $sql .= ' INNER JOIN obramed o ON TRIM(u.OBRASOC) = TRIM(o.obrasoc)';
+        $sql .= ' INNER JOIN cartilla.obramed o ON TRIM(u.OBRASOC) = TRIM(o.obrasoc)';
     }
     $sql .= " WHERE (TRIM(u.NROAFILIAD) = :carnet
                    OR TRIM(u.CNROAFI) = :itrom
@@ -95,7 +95,7 @@ try {
         'telefono' => $telefono,
     ));
 } catch (Exception $e) {
-    echo json_encode(array('status' => 'error', 'mensaje' => 'No se pudo consultar el padrón.'));
+    echo json_encode(array('status' => 'error', 'mensaje' => 'Error SQL: ' . $e->getMessage()));
 }
 
 function telefonoPrestador($pdo, $codigo)
@@ -105,7 +105,7 @@ function telefonoPrestador($pdo, $codigo)
     }
     $stmt = $pdo->prepare(
         'SELECT TELCONS, TELPART, TELCONS2
-         FROM ebamp
+         FROM cartilla.ebamp
          WHERE TRIM(CODIGO) = :codigo
          LIMIT 1'
     );

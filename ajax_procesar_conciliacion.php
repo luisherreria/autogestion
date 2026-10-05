@@ -179,7 +179,7 @@ try {
     }
     $pdo = Database::getConnection();
     $diccionarioPrestadores = array();
-    $stmtPrestadores = $pdo->query('SELECT CODIGO, NOMBRE FROM ebamp');
+    $stmtPrestadores = $pdo->query('SELECT CODIGO, NOMBRE FROM cartilla.ebamp');
     while ($row = $stmtPrestadores->fetch(PDO::FETCH_ASSOC)) {
         $codigoPrestador = trim((string) $row['CODIGO']);
         $nombrePrestadorBase = trim((string) $row['NOMBRE']);

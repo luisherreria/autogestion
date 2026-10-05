@@ -18,13 +18,13 @@ $esAdmin = isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin';
 $codigo = isset($_SESSION['codigo']) ? trim($_SESSION['codigo']) : '';
 
 if ($origen === 'SANATORIAL') {
-    $tabla = 'sanorden';
-    $autoriza = 'sanauto';
-    $detalle = 'sanautod';
+    $tabla = 'cartilla.sanorden';
+    $autoriza = 'cartilla.sanauto';
+    $detalle = 'cartilla.sanautod';
 } else {
-    $tabla = 'ordenes';
-    $autoriza = 'Autoriza';
-    $detalle = 'detauto';
+    $tabla = 'cartilla.ordenes';
+    $autoriza = 'cartilla.Autoriza';
+    $detalle = 'cartilla.detauto';
 }
 
 $sql = 'SELECT

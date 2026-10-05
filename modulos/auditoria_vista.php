@@ -22,7 +22,7 @@ try {
          FROM auditoria_log a
          LEFT JOIN (
              SELECT TRIM(CODIGO) AS codigo, MAX(TRIM(NOMBRE)) AS NOMBRE
-             FROM ebamp
+             FROM cartilla.ebamp
              GROUP BY TRIM(CODIGO)
          ) e ON e.codigo = TRIM(a.codigo_prestador)
          ORDER BY a.fecha_hora DESC, a.id DESC
