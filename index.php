@@ -327,6 +327,11 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                                 <i class="fa-solid fa-user-secret mr-1"></i> Acceso Prestadores
                             </a>
                         </li>
+                        <li>
+                            <a href="help/Manual_Autogestion_Administrador.pdf" target="_blank" class="block py-1 pl-6 hover:text-white">
+                                <i class="fa-solid fa-book mr-1"></i> Manual de Usuario
+                            </a>
+                        </li>
                     </ul>
                 </details>
             <?php } ?>
