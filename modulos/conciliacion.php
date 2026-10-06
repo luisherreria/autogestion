@@ -17,6 +17,17 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'admin') {
             <i class="fa-solid fa-file-excel text-3xl text-blue-800"></i>
             <span class="text-sm font-medium text-slate-800">Arrastrá el Excel acá o hacé clic para seleccionarlo</span>
             <span id="nombre-excel" class="text-xs text-slate-500">Solo archivos .xls o .xlsx</span>
+            <div class="mt-4 text-xs text-gray-500 bg-gray-50 p-3 rounded border border-gray-200 inline-block text-left">
+                <p class="font-bold mb-1 text-gray-600"><i class="fa-solid fa-circle-info mr-1"></i> Columnas requeridas en el Excel:</p>
+                <ul class="list-disc list-inside grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1">
+                    <li><b>Código</b> (o Prestador)</li>
+                    <li><b>Fecha</b> (o Emisión)</li>
+                    <li><b>Sucursal</b> (o Cod Comprobante)</li>
+                    <li><b>Número</b> (o Factura)</li>
+                    <li><b>Importe</b></li>
+                    <li><b>Saldo</b></li>
+                </ul>
+            </div>
             <input id="archivo-excel" name="archivo" type="file" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden">
         </label>
         <div class="mt-4 flex items-center gap-3">
@@ -53,6 +64,11 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'admin') {
                 <th class="text-right">Importe Excel</th>
                 <th class="text-right">Saldo Excel</th>
                 <th>Estado Sistema</th>
+                <th>Orden de Pago</th>
+                <th>Fecha Pago</th>
+                <th class="text-right">Débito</th>
+                <th class="text-right">CSN</th>
+                <th class="text-center"><input type="checkbox" id="marcar-todos-enviar" class="w-4 h-4 text-blue-600 rounded cursor-pointer mr-1"> Enviar</th>
             </tr>
         </thead>
         <tbody></tbody>
@@ -62,9 +78,17 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'admin') {
                 <th id="totalImporteSelect" class="text-right">$ 0,00</th>
                 <th id="totalSaldoSelect" class="text-right">$ 0,00</th>
                 <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
             </tr>
         </tfoot>
     </table>
+    <button type="button" id="btn-enviar-mail" class="hidden btn btn-primary bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded shadow-sm text-sm">
+        <i class="fa-solid fa-envelope mr-1"></i> Enviar Reclamo por Mail
+    </button>
 </div>
 
 <script>
@@ -81,7 +105,7 @@ function iniciarConciliacion() {
         buttons: botonesExportacionGrilla({
             title: 'Conciliador de Saldos',
             exportOptions: {
-                columns: [1, 2, 3, 4, 5, 6],
+                columns: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
                 format: {
                     body: function (dato) {
                         return $('<div>').html(dato).text().trim();
@@ -90,7 +114,7 @@ function iniciarConciliacion() {
             }
         }),
         columnDefs: [
-            { orderable: false, targets: 0 }
+            { orderable: false, targets: [0, 11] }
         ],
         order: [[1, 'asc']],
         columns: [
@@ -109,7 +133,12 @@ function iniciarConciliacion() {
             { data: 'comprobante' },
             { data: 'importe', className: 'text-right' },
             { data: 'saldo', className: 'text-right' },
-            { data: 'estado' }
+            { data: 'estado' },
+            { data: 'orden_pago', className: 'nowrap' },
+            { data: 'fecha_pago', className: 'nowrap' },
+            { data: 'debito', className: 'text-right nowrap' },
+            { data: 'csn', className: 'text-right nowrap' },
+            { data: 'enviar', orderable: false, searchable: false, className: 'text-center' }
         ],
         language: {
             search: 'Buscar:',
@@ -121,6 +150,98 @@ function iniciarConciliacion() {
             emptyTable: 'Todavía no se procesó un Excel',
             paginate: { previous: 'Anterior', next: 'Siguiente' }
         }
+    });
+    tabla.buttons().container().append($('#btn-enviar-mail').removeClass('hidden'));
+
+    var rutasAdjuntosReclamo = [];
+
+    $('#btn-enviar-mail').on('click', function () {
+        var grilla = $('#tablaConciliacion').DataTable();
+        var marcadas = grilla.rows({ search: 'applied' }).nodes().to$().find('.cb-enviar-mail:checked');
+        if (!marcadas.length) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Sin comprobantes',
+                text: 'Seleccione al menos un comprobante.',
+                confirmButtonColor: '#1e40af'
+            });
+            return;
+        }
+        var lineas = [];
+        var rutas = [];
+        var mail = '';
+        marcadas.each(function () {
+            var cb = $(this);
+            if (mail === '') {
+                var fila = grilla.row(cb.closest('tr')).data();
+                mail = fila && fila.mail_deb ? fila.mail_deb : '';
+            }
+            var comprobante = $.trim(cb.attr('data-comprobante') || '');
+            var importe = $.trim(cb.attr('data-importe') || '');
+            var estado = $.trim(cb.attr('data-estado') || '');
+            if (importe.indexOf('$') === -1 && importe !== '') {
+                importe = '$' + importe;
+            }
+            lineas.push('Reclamamos el estado de: Factura ' + comprobante + ' - Importe ' + importe + ' - Estado: ' + estado);
+            $.each(['data-path-op', 'data-path-debito', 'data-path-csn'], function (_, atributo) {
+                var ruta = $.trim(cb.attr(atributo) || '');
+                if (ruta !== '' && $.inArray(ruta, rutas) === -1) {
+                    rutas.push(ruta);
+                }
+            });
+        });
+        rutasAdjuntosReclamo = rutas;
+        $('#mail-destinatario').val(mail);
+        $('#mail-asunto').val('Reclamo de saldos');
+        $('#mail-mensaje').val(lineas.join('\n'));
+        $('#modal-reclamo').removeClass('hidden').addClass('flex');
+    });
+
+    $('#mail-enviar').on('click', function () {
+        var botonMail = $(this);
+        var htmlOriginal = botonMail.html();
+        botonMail.prop('disabled', true).text('Enviando...');
+        $.ajax({
+            url: 'ajax_enviar_reclamo.php',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                destinatario: $('#mail-destinatario').val(),
+                asunto: $('#mail-asunto').val(),
+                mensaje: $('#mail-mensaje').val(),
+                adjuntos: rutasAdjuntosReclamo
+            }
+        }).done(function (respuesta) {
+            if (respuesta && respuesta.status === 'ok') {
+                $('#modal-reclamo').addClass('hidden').removeClass('flex');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Enviado',
+                    text: respuesta.mensaje || 'Enviado',
+                    confirmButtonColor: '#1e40af'
+                });
+                return;
+            }
+            Swal.fire({
+                icon: 'error',
+                title: 'No se pudo enviar',
+                text: respuesta && respuesta.mensaje ? respuesta.mensaje : 'No se pudo enviar el correo.',
+                confirmButtonColor: '#1e40af'
+            });
+        }).fail(function () {
+            Swal.fire({
+                icon: 'error',
+                title: 'No se pudo enviar',
+                text: 'No se pudo enviar el correo.',
+                confirmButtonColor: '#1e40af'
+            });
+        }).always(function () {
+            botonMail.prop('disabled', false).html(htmlOriginal);
+        });
+    });
+
+    $('#mail-cancelar, #cerrar-modal-reclamo').on('click', function () {
+        $('#modal-reclamo').addClass('hidden').removeClass('flex');
     });
 
     var timeoutSuma;
@@ -166,6 +287,11 @@ function iniciarConciliacion() {
         var isChecked = $(this).is(':checked');
         grilla.rows({ search: 'applied' }).nodes().to$().find('.fila-seleccionada').prop('checked', isChecked);
         calcularTotalesSeleccionados();
+    });
+
+    $('#marcar-todos-enviar').off('change').on('change', function () {
+        var table = $('#tablaConciliacion').DataTable();
+        $('input.cb-enviar-mail', table.cells().nodes()).prop('checked', this.checked);
     });
 
     var input = document.getElementById('archivo-excel');
@@ -252,3 +378,34 @@ if (document.readyState === 'loading') {
     iniciarConciliacion();
 }
 </script>
+
+<div id="modal-reclamo" class="fixed inset-0 z-[90] hidden items-center justify-center bg-slate-900/50 p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+            <h2 class="text-lg font-semibold text-slate-900">Enviar Reclamo por Mail</h2>
+            <button type="button" id="cerrar-modal-reclamo" class="text-slate-500 hover:text-slate-800" aria-label="Cerrar">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="px-5 py-4 space-y-4">
+            <div>
+                <label for="mail-destinatario" class="block text-sm font-medium text-gray-700 mb-1">Para:</label>
+                <input type="text" id="mail-destinatario" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label for="mail-asunto" class="block text-sm font-medium text-gray-700 mb-1">Asunto:</label>
+                <input type="text" id="mail-asunto" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label for="mail-mensaje" class="block text-sm font-medium text-gray-700 mb-1">Mensaje:</label>
+                <textarea id="mail-mensaje" rows="10" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+            </div>
+        </div>
+        <div class="flex justify-end gap-2 px-5 py-4 border-t border-slate-200">
+            <button type="button" id="mail-cancelar" class="px-3 py-1.5 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Cancelar</button>
+            <button type="button" id="mail-enviar" class="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700">
+                <i class="fa-solid fa-envelope mr-1"></i> Enviar Mail
+            </button>
+        </div>
+    </div>
+</div>
