@@ -35,7 +35,7 @@ if ($seccion === 'perfil' && empty($GLOBALS['renderPerfil'])) {
     exit;
 }
 
-$mostrarBienvenida = !empty($_SESSION['mostrar_bienvenida']);
+$mostrarBienvenida = !empty($_SESSION['mostrar_bienvenida']) && !(isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin');
 unset($_SESSION['mostrar_bienvenida']);
 
 $nombre = isset($_SESSION['nombre']) ? $_SESSION['nombre'] : '';
