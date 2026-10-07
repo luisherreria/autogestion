@@ -105,22 +105,23 @@ function textoEstadoMail($estado)
     return 'Leído';
 }
 
-function iconoMailLiquidacion($estado, $letra)
+function iconoMailLiquidacion($mail, $letra)
 {
-    if ($estado === null || $estado === '') {
+    if (!is_array($mail) || !isset($mail['id']) || (int) $mail['id'] <= 0) {
         return '';
     }
+    $estado = isset($mail['estado']) ? $mail['estado'] : '';
     $titulo = textoEstadoMail($estado);
     $clase = 'text-blue-500';
     $icono = 'fa-envelope';
-    if ((string) $estado !== '0') {
+    if ((string) $estado !== '' && (string) $estado !== '0') {
         $clase = 'text-green-500';
         $icono = 'fa-envelope-open';
     }
-    return '<span title="' . $titulo . '" class="fa-stack ' . $clase . '" style="font-size: 0.7em;">'
+    return '<button type="button" class="btn-ver-notificacion fa-stack ' . $clase . '" data-id="' . (int) $mail['id'] . '" title="' . htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8') . '" style="font-size: 0.7em; background: transparent; border: 0; padding: 0; line-height: 1; cursor: pointer;">'
         . '<i class="fa-solid ' . $icono . ' fa-stack-2x"></i>'
         . '<span class="fa-stack-1x font-bold text-white" style="font-size: 0.6em; margin-top: 3px;">' . $letra . '</span>'
-        . '</span>';
+        . '</button>';
 }
 
 function columnaMailsLiquidacion($mailPago, $mailResumen)
@@ -135,11 +136,11 @@ function columnaMailsLiquidacion($mailPago, $mailResumen)
 function textoMailsLiquidacion($mailPago, $mailResumen)
 {
     $partes = array();
-    if ($mailPago !== null && $mailPago !== '') {
-        $partes[] = 'P: ' . textoEstadoMail($mailPago);
+    if (is_array($mailPago) && isset($mailPago['estado']) && $mailPago['estado'] !== '') {
+        $partes[] = 'P: ' . textoEstadoMail($mailPago['estado']);
     }
-    if ($mailResumen !== null && $mailResumen !== '') {
-        $partes[] = 'R: ' . textoEstadoMail($mailResumen);
+    if (is_array($mailResumen) && isset($mailResumen['estado']) && $mailResumen['estado'] !== '') {
+        $partes[] = 'R: ' . textoEstadoMail($mailResumen['estado']);
     }
     if (count($partes) === 0) {
         return '-';
@@ -151,7 +152,7 @@ function mapaMailsLiquidacion($pdo)
 {
     $mapa = array();
     $stmt = $pdo->query(
-        "SELECT TRIM(cod_prestador) AS cod, TRIM(nro_comprobante) AS comp, TRIM(obra_social) AS os,
+        "SELECT id_notificacion, TRIM(cod_prestador) AS cod, TRIM(nro_comprobante) AS comp, TRIM(obra_social) AS os,
                 tipo_notificacion, estado_lectura
          FROM notificaciones_historial
          WHERE tipo_notificacion IN ('PAGO', 'RESUMEN')
@@ -159,7 +160,10 @@ function mapaMailsLiquidacion($pdo)
     );
     while ($fila = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $clave = $fila['cod'] . '|' . $fila['comp'] . '|' . $fila['os'] . '|' . $fila['tipo_notificacion'];
-        $mapa[$clave] = $fila['estado_lectura'];
+        $mapa[$clave] = array(
+            'id' => (int) $fila['id_notificacion'],
+            'estado' => $fila['estado_lectura'],
+        );
     }
     return $mapa;
 }
@@ -215,8 +219,12 @@ try {
         $suc = str_pad(trim((string) $fila['LISUC']), 4, '0', STR_PAD_LEFT);
         $factura = str_pad(trim((string) $fila['LIFACTURA']), 8, '0', STR_PAD_LEFT);
         $clave = $periodo . '_' . $suc . '_' . $factura;
+        $facturado = (float) $fila['LIFACTURAD'];
+        $debitado = (float) $fila['LIDEBITADO'];
+        $liquidado = (float) $fila['LILIQUIDAD'];
         $pagado = (float) $fila['LIPAGADO'];
         $saldo = (float) $fila['LISALDO'];
+        $debitada = (round($facturado, 2) == round($debitado, 2) && round($debitado, 2) != 0 && round($liquidado, 2) == 0 && round($pagado, 2) == 0) ? 1 : 0;
         $fechaPago = formatearFecha($fila['LIFECHAPAG']);
         if ($fechaPago === '') {
             $fechaPago = '/ /';
@@ -298,6 +306,7 @@ try {
             'retencion' => $retencion,
             'retencion_pdf' => $retencionPdf,
             'pagada' => ($pagado > 0 && $saldo == 0) ? 1 : 0,
+            'debitada' => $debitada,
             'notificaciones' => columnaMailsLiquidacion($mailPago, $mailResumen),
             'notificaciones_txt' => textoMailsLiquidacion($mailPago, $mailResumen),
         );

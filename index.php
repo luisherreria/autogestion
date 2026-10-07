@@ -504,6 +504,9 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                 if ($.fn.dataTable && $.fn.dataTable.isDataTable('#tablaNotificaciones')) {
                     $('#tablaNotificaciones').DataTable().ajax.reload(null, false);
                 }
+                if ($.fn.dataTable && $.fn.dataTable.isDataTable('#tablaPagos')) {
+                    $('#tablaPagos').DataTable().ajax.reload(null, false);
+                }
             });
         }
 
@@ -681,6 +684,8 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                     createdRow: function (fila, dato) {
                         if (dato.pagada) {
                             $(fila).addClass('fila-pagada');
+                        } else if (dato.debitada) {
+                            $(fila).addClass('fila-debitada');
                         }
                     },
                     language: idiomaTabla
@@ -703,6 +708,13 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                 $('#btnLimpiarFiltroLiq').on('click', function () {
                     $('#valorFiltroLiq').val('');
                     aplicarFiltroLiq();
+                });
+                $('#tablaPagos').on('click', '.btn-ver-notificacion', function (evento) {
+                    evento.preventDefault();
+                    var id = parseInt($(this).attr('data-id'), 10) || 0;
+                    if (id > 0) {
+                        abrirNotificacion(id);
+                    }
                 });
                 $('#controlTamanoLetra').on('change', function () {
                     $('#tablaPagos').removeClass('texto-grilla-xs text-sm text-base').addClass(this.value);

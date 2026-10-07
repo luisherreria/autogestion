@@ -8,6 +8,7 @@ if (!defined('PORTAL_AUTOGESTION')) {
 ?>
 <style>
     #tablaPagos tr.fila-pagada td { background-color: #dcfce7 !important; }
+    #tablaPagos tr.fila-debitada td { background-color: #fff9c4 !important; }
     #tablaPagos td.num, #tablaPagos th.num { text-align: right; white-space: nowrap; }
     #tablaPagos td.nowrap, #tablaPagos th.nowrap { white-space: nowrap; }
     #tablaPagos_wrapper .dataTables_length,
@@ -71,4 +72,15 @@ if (!defined('PORTAL_AUTOGESTION')) {
         </thead>
         <tbody></tbody>
     </table>
+    <div class="flex flex-wrap items-center gap-4 mt-4 text-sm text-slate-600">
+        <div class="flex items-center">
+            <span class="inline-block w-4 h-4 mr-2 border border-gray-300 bg-white"></span> Pendiente / Sin Pagar
+        </div>
+        <div class="flex items-center">
+            <span class="inline-block w-4 h-4 mr-2 border border-gray-300" style="background-color: #dcfce7;"></span> Pagada
+        </div>
+        <div class="flex items-center">
+            <span class="inline-block w-4 h-4 mr-2 border border-gray-300" style="background-color: #fff9c4;"></span> Totalmente Debitada
+        </div>
+    </div>
 </div>
