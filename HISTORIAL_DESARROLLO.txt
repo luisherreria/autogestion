@@ -1,0 +1,230 @@
+HISTORIAL DE DESARROLLO — AUTOGESTIÓN PRESTADORES
+Portal: C:\xampp\htdocs\autogestion
+Branch: cursor/portal-autogestion-prestadores
+Remoto: https://github.com/luisherreria/autogestion.git
+Documento armado el 8 de octubre de 2026.
+
+Este archivo resume, en orden, lo que se construyó en el portal desde el primer commit.
+
+
+REGLAS QUE SE RESPETARON EN TODO EL TRABAJO
+- El código quedó compatible con el estilo de PHP 5.6: array(), sin corchetes [] para arreglos, sin funciones flecha y sin tipado estricto.
+- Nombres de tablas en minúsculas, salvo las ocho tablas de cartilla, que conservan su mayúscula original y llevan el prefijo cartilla.
+- Consultas con PDO y sentencias preparadas.
+- Avisos al usuario con SweetAlert2, no con alert() ni confirm() del navegador.
+- Íconos de Font Awesome 6 (fa-solid).
+- La sesión real del portal usa rol, codigo, email y es_admin. El administrador entra con rol admin.
+
+
+1. PORTAL DE PRESTADORES (25 de septiembre de 2026)
+Commit eb081ad.
+Se creó el portal de autogestión para que el prestador ingrese y consulte sus datos.
+Incluye ingreso, menú y las pantallas base de consulta.
+
+
+2. HERRAMIENTAS DE ADMINISTRADOR, AUDITORÍA Y PAGOS (28 de septiembre de 2026)
+Commit bea37c0.
+Se sumaron herramientas de administración, el registro de auditoría y la grilla de pagos.
+Cada prestador ve solo sus propios registros.
+
+Commit ae4c513.
+Obras sociales dadas de baja en los últimos 180 días.
+Las descargas quedan registradas en el menú que corresponde.
+
+Commit 36bcb09.
+Coseguros y APB muestra un solo archivo, elegido por prioridad.
+Se aceptan los formatos extra de carga.
+
+Commit fed5218.
+Permisos de menú según el tipo de correo del prestador.
+Avisos de empadronamiento de afiliados.
+
+
+3. AUTORIZACIONES, EMPADRONAMIENTO Y PERFIL (29 de septiembre de 2026)
+Commit f1e3b51.
+Autorizaciones de los últimos 90 días.
+En el empadronamiento se muestra el plan del afiliado.
+
+Commit df61577.
+Se ocultó la confirmación del mail de empadronamiento, porque ese aviso se envía solo.
+
+Commit cde3893.
+Perfil opcional del operador. Al guardarlo, vuelve al menú.
+
+Commit 9898e37.
+Se restauró el comprobante oficial de rechazo.
+El operador se muestra al lado del prestador.
+
+Commit 75084f2.
+Se ajustó la grilla de Liquidaciones.
+Recibo y retención se leen de los campos reales de la tabla liquida.
+
+Commit 5bd6bbf.
+Cada orden de pago se enlaza a su PDF de Tango cuando el archivo existe y la fecha corresponde.
+La ruta es ../uploads/pdftango/ y el número de orden se rellena a 13 dígitos (O_P_0000000017783.pdf).
+
+Commit eb573cb.
+Debajo del código del prestador se muestra el nombre.
+Los certificados de retención también tienen enlace.
+
+
+4. NOTIFICACIONES (30 de septiembre de 2026)
+Commit 7db6a5a.
+Campanita y bandeja de notificaciones para que el prestador abra sus correos desde el portal.
+Al entrar, si hay avisos sin leer, aparece "Tienes N notificaciones nuevas", con Ir a Notificaciones y Cerrar.
+
+Commit 8d8dd7c.
+En la bandeja se muestran factura, obra social y razón social.
+
+
+5. LIQUIDACIONES: ESTADO DEL CORREO (1 de octubre de 2026)
+Commit e556d5f.
+En cada liquidación, la columna Notif. muestra el estado del mail de pago (P) y del resumen (R).
+Sobre azul si no se leyó. Sobre verde abierto si ya se leyó.
+
+Commit 2ce4f49.
+Si no hubo envío, en lugar del ícono se muestra un guión.
+
+
+6. CONCILIADOR DE SALDOS (1 de octubre de 2026)
+Commit 5d82d98.
+Conciliador para el administrador: sube un Excel y cruza las facturas seleccionadas.
+
+Commit 5192c05.
+Los totales de la selección se recalculan con una espera corta, para que el filtro no se trabe.
+
+Commit faa82d3.
+El cruce del Excel se hace en memoria.
+Cada factura queda marcada si está en el sistema.
+
+Commit 12dc419.
+Fechas de factura, estado de auditoría, filtros y exportación de la grilla.
+
+Commit 2efd9b0.
+Las fechas del Conciliador se muestran como día/mes/año.
+
+
+7. LIQUIDACIONES: FILTROS Y EXPORTACIÓN (1 de octubre de 2026)
+Commit fc2d23d.
+Filtros por columna y control del tamaño de letra en Liquidaciones.
+
+Commit aa793f8.
+Filtros, tamaño de letra e íconos de exportar quedaron en una sola barra.
+En todas las grillas, Excel, PDF e Imprimir son solo íconos:
+Excel verde, PDF rojo, Imprimir azul.
+
+
+8. ACCESO COMO PRESTADOR Y MANUALES (1 al 6 de octubre de 2026)
+Commit a267748.
+El administrador puede buscar un prestador activo e ingresar al portal como él.
+La búsqueda es por código, nombre o nombre de fantasía, mínimo 3 caracteres.
+No entran prestadores de baja ni categoría ADEF.
+Los correos se agrupan por tipo y, al elegir uno, pide confirmación con SweetAlert.
+Al entrar como prestador se vuelve a mostrar la bienvenida si hay notificaciones sin leer.
+
+Commit a025075.
+En el encabezado, al lado de la campanita, hay un acceso al manual de usuario.
+El PDF está en help/manual_autogestion.pdf, porque la carpeta archivos no se puede abrir por la web.
+
+Commit 7b278e0.
+Las tablas de la cartilla se leen con el prefijo cartilla. desde la misma conexión:
+Autoriza, detauto, ebamp, obramed, ordenes, sanauto, sanautod y sanorden.
+El resto de las tablas sigue sin ese prefijo.
+
+Commit 24ace6a.
+En el menú del administrador, debajo de Acceso Prestadores, se agregó el Manual de Usuario del administrador.
+El PDF está en help/Manual_Autogestion_Administrador.pdf.
+
+
+9. CONCILIADOR: PDF, COLUMNAS Y RECLAMO POR MAIL (6 de octubre de 2026)
+Commit 010c86a.
+
+En la carga del Excel se indican las columnas obligatorias:
+Código o Prestador, Fecha o Emisión, Sucursal o Cod Comprobante, Número o Factura, Importe y Saldo.
+
+La grilla suma estas columnas, después del estado:
+Orden de Pago, Fecha Pago, Débito y CSN.
+
+Orden de pago:
+- Sale de liquida.liordenpag.
+- Si la fecha de pago es anterior al 7 de enero de 2026, se muestra solo el número, sin enlace.
+- Si es de ese día en adelante, el número abre el PDF de Tango:
+  ../uploads/pdftango/O_P_ más el número rellenado con ceros hasta 13 posiciones, más .pdf.
+- Si no hay orden, la celda queda vacía.
+
+Débito y CSN:
+- Si hay PDF, el importe es un enlace rojo con el ícono de PDF y descarga por descargar_pago.php.
+- Si solo hay importe, se muestra el monto.
+- Si no hay nada, la celda queda vacía.
+
+Columna Enviar:
+- Cada fila tiene un checkbox para elegir qué comprobantes entran en el reclamo.
+- En el encabezado, "Marcar todas" tilda esa columna en todas las páginas de la grilla, no solo en la visible.
+- El checkbox de la primera columna sigue siendo el de los totales.
+
+Envío del reclamo:
+- El botón Enviar Reclamo por Mail arma el texto con las filas tildadas:
+  Reclamamos el estado de: Factura X - Importe $Y - Estado: Faltante.
+- El destinatario inicial es el MAIL_DEB del prestador.
+- Enviar Mail manda el correo con PHPMailer, usando t_config_smtp donde metodo_envio es SMTPC.
+- Adjunta los PDF de orden, débito y CSN que existan en el servidor.
+- Registra el resultado en t_log_emails (módulo Conciliador de Saldos, plantilla RECLAMO_SALDOS)
+  y en auditoria_log.
+
+
+10. BIENVENIDA SOLO PARA PRESTADORES (7 de octubre de 2026)
+Commit 9554677.
+La ventana "Tienes N notificaciones nuevas" ya no aparece cuando entra un administrador.
+Sigue apareciendo para el prestador.
+
+
+11. LIQUIDACIONES: ABRIR EL CORREO Y FILAS DEBITADAS (7 de octubre de 2026)
+Commit 14b3f53.
+
+Columna Notif.:
+- El sobre azul o verde abre el mensaje.
+- Usa el mismo cuadro de Notificaciones: asunto, cuerpo y PDF si existe.
+- Después de leerlo, el sobre pasa a verde.
+
+Colores de fila:
+- Blanca: pendiente o sin pagar.
+- Verde (#dcfce7): pagada.
+- Amarillo pastel (#fff9c4): totalmente debitada.
+  Se pinta cuando el facturado es igual al debitado, ese importe no es cero,
+  y el liquidado y el pagado están en cero.
+- Debajo de la tabla hay una leyenda con los tres colores:
+  Pendiente / Sin Pagar, Pagada y Totalmente Debitada.
+
+
+MENÚ DEL ADMINISTRADOR, COMO QUEDÓ AGRUPADO
+- Control de Auditoría.
+- Gestión de archivos y gestión de permisos.
+- Conciliador de saldos.
+- Acceso a prestadores.
+- Manual de usuario del administrador.
+
+En el pie del menú y en la pantalla de ingreso:
+© año COMEDICA S.A.
+Desarrollado por Luis Herrería.
+
+
+TABLAS DE LA BASE
+Ocho tablas se leen como cartilla.nombre:
+Autoriza, detauto, ebamp, obramed, ordenes, sanauto, sanautod, sanorden.
+
+El resto está en la base vfpmedicos:
+vfpmedicos.liquida, vfpmedicos.consulta, vfpmedicos.obrasoc,
+vfpmedicos.notificaciones_historial, vfpmedicos.auditoria_log,
+vfpmedicos.users, vfpmedicos.usuarios_prestadores, vfpmedicos.a_permisos,
+vfpmedicos.t_config_smtp, vfpmedicos.t_log_emails, vfpmedicos.t_plantillas_emails,
+vfpmedicos.unicos, vfpmedicos.archivos_coseguros, vfpmedicos.archivos_subidos.
+
+La conexión del portal abre vfpmedicos, por eso en el código esas tablas
+pueden escribirse sin el prefijo. La base a la que pertenecen es vfpmedicos.
+
+
+QUÉ NO FORMA PARTE DE ESTOS COMMITS
+Quedaron cambios locales sin subir, ajenos a este trabajo:
+ajax_validar_padron.php, classes/PDF.php, config/database.php,
+modulos/obras_sociales.php y procesar_subida.php.
+Tampoco se subieron los PDF de comprobantes ni los scripts temporales.
