@@ -574,6 +574,85 @@ function refrescarPermisosSesion($pdo)
         $_SESSION['tipos_correo'] = tiposCorreoPorCodigo($pdo, $codigo, $email);
     }
     $_SESSION['permisos'] = permisosPorTipos($pdo, $_SESSION['tipos_correo']);
+    aplicarFiltroCategoriaLiquidaciones();
+}
+
+function asegurarTablaPermisosCategorias($pdo)
+{
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS a_permisos_categorias (
+            id INT NOT NULL AUTO_INCREMENT,
+            categoria VARCHAR(20) NOT NULL,
+            ver_pagos TINYINT(1) DEFAULT 1,
+            PRIMARY KEY (id),
+            UNIQUE KEY categoria (categoria)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8"
+    );
+    $cantidad = (int) $pdo->query('SELECT COUNT(*) FROM a_permisos_categorias')->fetchColumn();
+    if ($cantidad > 0) {
+        return;
+    }
+    $semilla = array(
+        array('SAN', 1),
+        array('CP', 0),
+        array('POLI', 0),
+        array('AMB', 0),
+        array('ADEF', 0),
+    );
+    $stmt = $pdo->prepare(
+        'INSERT INTO a_permisos_categorias (categoria, ver_pagos) VALUES (:categoria, :ver_pagos)'
+    );
+    foreach ($semilla as $fila) {
+        $stmt->execute(array(
+            ':categoria' => $fila[0],
+            ':ver_pagos' => $fila[1],
+        ));
+    }
+}
+
+function categoriaPuedeVerLiquidaciones()
+{
+    static $cacheCategoria = null;
+    static $cachePermitida = null;
+    if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') {
+        return true;
+    }
+    $categoria = isset($_SESSION['categoria']) ? strtoupper(trim((string) $_SESSION['categoria'])) : '';
+    if ($categoria === '') {
+        return false;
+    }
+    if ($cacheCategoria === $categoria && $cachePermitida !== null) {
+        return $cachePermitida;
+    }
+    $cacheCategoria = $categoria;
+    $cachePermitida = false;
+    try {
+        $pdo = Database::getConnection();
+        asegurarTablaPermisosCategorias($pdo);
+        $stmt = $pdo->prepare(
+            'SELECT ver_pagos
+             FROM a_permisos_categorias
+             WHERE UPPER(TRIM(categoria)) = :categoria
+             LIMIT 1'
+        );
+        $stmt->execute(array(':categoria' => $categoria));
+        $fila = $stmt->fetch(PDO::FETCH_ASSOC);
+        $cachePermitida = $fila && (int) $fila['ver_pagos'] === 1;
+    } catch (Exception $e) {
+        $cachePermitida = false;
+    }
+    return $cachePermitida;
+}
+
+function aplicarFiltroCategoriaLiquidaciones()
+{
+    if (categoriaPuedeVerLiquidaciones()) {
+        return;
+    }
+    if (!isset($_SESSION['permisos']) || !is_array($_SESSION['permisos'])) {
+        $_SESSION['permisos'] = array();
+    }
+    $_SESSION['permisos']['pagos'] = 0;
 }
 
 function tienePermiso($modulo)
@@ -581,7 +660,17 @@ function tienePermiso($modulo)
     if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') {
         return true;
     }
-    return isset($_SESSION['permisos'][$modulo]) && $_SESSION['permisos'][$modulo];
+    if ($modulo === 'ver_pagos') {
+        $modulo = 'pagos';
+    }
+    $permitido = isset($_SESSION['permisos'][$modulo]) && $_SESSION['permisos'][$modulo];
+    if (!$permitido) {
+        return false;
+    }
+    if ($modulo === 'pagos' && !categoriaPuedeVerLiquidaciones()) {
+        return false;
+    }
+    return true;
 }
 
 function asegurarTablaNotificaciones($pdo)

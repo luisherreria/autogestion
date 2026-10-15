@@ -19,7 +19,7 @@ if ($codigoDestino === '' || $emailDestino === '') {
 try {
     $pdo = Database::getConnection();
     $stmt = $pdo->prepare(
-        'SELECT CODIGO, NOMBRE, MAIL, MAIL_AUTO, MAIL_DEB, MAIL_PAGO, MAILCONTRA
+        'SELECT CODIGO, NOMBRE, CATEG, MAIL, MAIL_AUTO, MAIL_DEB, MAIL_PAGO, MAILCONTRA
          FROM cartilla.ebamp
          WHERE TRIM(CODIGO) = :codigo
          LIMIT 1'
@@ -74,8 +74,10 @@ $_SESSION['mail_auto'] = trim((string) $prestador['MAIL_AUTO']);
 $_SESSION['mail_deb'] = trim((string) $prestador['MAIL_DEB']);
 $_SESSION['mail_pago'] = trim((string) $prestador['MAIL_PAGO']);
 $_SESSION['mailcontra'] = trim((string) $prestador['MAILCONTRA']);
+$_SESSION['categoria'] = trim((string) $prestador['CATEG']);
 $_SESSION['tipos_correo'] = $tipos;
 $_SESSION['permisos'] = permisosPorTipos($pdo, $tipos);
+aplicarFiltroCategoriaLiquidaciones();
 $_SESSION['usuario_nombre'] = '';
 $_SESSION['usuario_apellido'] = '';
 $_SESSION['mostrar_bienvenida'] = 1;

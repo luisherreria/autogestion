@@ -206,8 +206,10 @@ try {
     $sql .= ' FROM liquida';
     $parametros = array();
     if (!$esAdmin) {
-        $sql .= ' WHERE TRIM(LIPRESTADO) = :codigo';
+        $sql .= ' WHERE TRIM(LIPRESTADO) = :codigo AND REPLACE(LIPERIODO, \'/\', \'\') >= \'2501\'';
         $parametros[':codigo'] = $codigoPrestador;
+    } else {
+        $sql .= ' WHERE REPLACE(LIPERIODO, \'/\', \'\') >= \'2501\'';
     }
     $sql .= ' ORDER BY LIPERIODO DESC, LIFACTURA ASC';
     $stmt = $pdo->prepare($sql);

@@ -15,6 +15,36 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+if (isset($_POST['id_categoria'])) {
+    $idCategoria = (int) $_POST['id_categoria'];
+    $verPagos = (isset($_POST['ver_pagos']) && (string) $_POST['ver_pagos'] === '1') ? 1 : 0;
+    if ($idCategoria <= 0) {
+        echo json_encode(array('ok' => false, 'error' => 'Categoría inválida.'));
+        exit;
+    }
+    try {
+        $pdo = Database::getConnection();
+        asegurarTablaPermisosCategorias($pdo);
+        $stmt = $pdo->prepare(
+            'UPDATE a_permisos_categorias SET ver_pagos = :ver_pagos WHERE id = :id'
+        );
+        $stmt->execute(array(
+            ':ver_pagos' => $verPagos,
+            ':id' => $idCategoria,
+        ));
+        $existe = $pdo->prepare('SELECT id FROM a_permisos_categorias WHERE id = :id LIMIT 1');
+        $existe->execute(array(':id' => $idCategoria));
+        if (!$existe->fetch()) {
+            echo json_encode(array('ok' => false, 'error' => 'No se encontró la categoría.'));
+            exit;
+        }
+        echo json_encode(array('ok' => true, 'id' => $idCategoria, 'ver_pagos' => $verPagos));
+    } catch (Exception $e) {
+        echo json_encode(array('ok' => false, 'error' => 'No se pudo guardar el permiso.'));
+    }
+    exit;
+}
+
 $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 if ($id <= 0) {
     echo json_encode(array('ok' => false, 'error' => 'Registro inválido.'));

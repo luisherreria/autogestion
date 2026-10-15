@@ -6,3 +6,5 @@ if (!isset($_SESSION['logueado']) || $_SESSION['logueado'] != 1) {
     header('Location: login.php');
     exit;
 }
+
+aplicarFiltroCategoriaLiquidaciones();

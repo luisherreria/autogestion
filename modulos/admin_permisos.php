@@ -12,16 +12,23 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== 'admin') {
 }
 
 $filas = array();
+$filasCategorias = array();
 $error = '';
 $modulos = mapaModulosPermiso();
 
 try {
     $pdo = Database::getConnection();
     asegurarTablaPermisos($pdo);
+    asegurarTablaPermisosCategorias($pdo);
     $filas = $pdo->query(
         'SELECT id, tipo_correo, ver_autorizaciones, ver_obras_sociales, ver_coseguros, ver_normativas, ver_contratos, ver_pagos, ver_empadronamiento
          FROM a_permisos
          ORDER BY tipo_correo ASC'
+    )->fetchAll();
+    $filasCategorias = $pdo->query(
+        'SELECT id, categoria, ver_pagos
+         FROM a_permisos_categorias
+         ORDER BY categoria ASC'
     )->fetchAll();
 } catch (Exception $e) {
     $error = $e->getMessage();
@@ -96,6 +103,60 @@ function iconoEstadoPermiso($valor)
             <div class="flex justify-end gap-2 pt-2">
                 <button type="button" id="cancelar-modal-permisos" class="rounded-lg px-4 py-2 text-sm border border-slate-300 text-slate-700">Cancelar</button>
                 <button type="submit" id="guardar-permisos" class="rounded-lg px-4 py-2 text-sm bg-blue-800 hover:bg-blue-900 text-white">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow overflow-x-auto p-4 mt-6">
+    <h2 class="text-lg font-semibold text-slate-900 mb-4">Permisos por Categoría de Prestador (Liquidaciones)</h2>
+    <table id="tablaPermisosCategorias" class="display w-full text-sm">
+        <thead>
+            <tr>
+                <th>Categoría</th>
+                <th class="text-center">Liquidaciones</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($filasCategorias as $filaCategoria) { ?>
+                <tr>
+                    <td><?php echo h($filaCategoria['categoria']); ?></td>
+                    <td class="text-center perm-categoria-celda"><?php echo iconoEstadoPermiso($filaCategoria['ver_pagos']); ?></td>
+                    <td>
+                        <button type="button"
+                                class="btn-editar-categoria inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm rounded-lg px-3 py-1.5"
+                                data-id="<?php echo (int) $filaCategoria['id']; ?>"
+                                data-categoria="<?php echo h($filaCategoria['categoria']); ?>"
+                                data-ver-pagos="<?php echo ((int) $filaCategoria['ver_pagos'] === 1) ? '1' : '0'; ?>">
+                            <i class="fa-solid fa-pen"></i> Editar
+                        </button>
+                    </td>
+                </tr>
+            <?php } ?>
+        </tbody>
+    </table>
+</div>
+
+<div id="modal-permisos-categoria" class="fixed inset-0 z-[80] hidden items-center justify-center bg-slate-900/50 p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+            <h2 class="text-lg font-semibold text-slate-900">Editar categoría</h2>
+            <button type="button" id="cerrar-modal-categoria" class="text-slate-500 hover:text-slate-800" aria-label="Cerrar">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form id="form-permisos-categoria" class="px-5 py-4 space-y-4">
+            <input type="hidden" name="id_categoria" id="categoria-id" value="">
+            <p class="text-sm text-slate-600">Categoría: <span id="categoria-nombre" class="font-medium text-slate-900"></span></p>
+            <div id="categoria-error" class="hidden rounded-lg bg-red-50 text-red-700 px-3 py-2 text-sm"></div>
+            <label class="flex items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" name="ver_pagos" id="categoria-ver-pagos" value="1" class="rounded border-slate-300">
+                Liquidaciones
+            </label>
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" id="cancelar-modal-categoria" class="rounded-lg px-4 py-2 text-sm border border-slate-300 text-slate-700">Cancelar</button>
+                <button type="submit" id="guardar-categoria" class="rounded-lg px-4 py-2 text-sm bg-blue-800 hover:bg-blue-900 text-white">Guardar</button>
             </div>
         </form>
     </div>

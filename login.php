@@ -97,6 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['mailcontra'] = '';
             $_SESSION['tipos_correo'] = array();
             $_SESSION['permisos'] = permisosCompletos();
+            $_SESSION['categoria'] = '';
             cargarPerfilEnSesion();
             completarPrestadorNotificaciones(Database::getConnection());
             $_SESSION['mostrar_bienvenida'] = 1;
@@ -119,6 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['mailcontra'] = '';
             $_SESSION['tipos_correo'] = array();
             $_SESSION['permisos'] = permisosCompletos();
+            $_SESSION['categoria'] = '';
             cargarPerfilEnSesion();
             completarPrestadorNotificaciones(Database::getConnection());
             $_SESSION['mostrar_bienvenida'] = 1;
@@ -131,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo = Database::getConnection();
             $like = '%' . str_replace(array('%', '_'), array('\\%', '\\_'), strtolower($usuario)) . '%';
             $stmt = $pdo->prepare(
-                'SELECT CODIGO, NOMBRE, MAIL_AUTO, MAIL_DEB, MAIL_PAGO, MAILCONTRA
+                'SELECT CODIGO, NOMBRE, CATEG, MAIL_AUTO, MAIL_DEB, MAIL_PAGO, MAILCONTRA
                  FROM cartilla.ebamp
                  WHERE (LOWER(IFNULL(MAIL_AUTO, \'\')) LIKE :mail_auto
                     OR LOWER(IFNULL(MAIL_DEB, \'\')) LIKE :mail_deb
@@ -177,8 +179,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['mail_deb'] = trim((string) $prestador['MAIL_DEB']);
                 $_SESSION['mail_pago'] = trim((string) $prestador['MAIL_PAGO']);
                 $_SESSION['mailcontra'] = trim((string) $prestador['MAILCONTRA']);
+                $_SESSION['categoria'] = trim((string) $prestador['CATEG']);
                 $_SESSION['tipos_correo'] = $tiposEncontrados;
                 $_SESSION['permisos'] = permisosPorTipos($pdo, $tiposEncontrados);
+                aplicarFiltroCategoriaLiquidaciones();
                 cargarPerfilEnSesion();
                 completarPrestadorNotificaciones($pdo);
                 $_SESSION['mostrar_bienvenida'] = 1;

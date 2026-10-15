@@ -288,8 +288,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                     continue;
                 }
                 $clavePermiso = isset($item['permiso']) ? $item['permiso'] : $clave;
-                $permisoActivo = isset($_SESSION['permisos'][$clavePermiso]) && (int) $_SESSION['permisos'][$clavePermiso] === 1;
-                if (!(isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') && !$permisoActivo) {
+                if (!tienePermiso($clavePermiso)) {
                     continue;
                 }
                 ?>
@@ -849,8 +848,74 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                         cerrarModalPermisos();
                     }).fail(function () {
                         $('#permisos-error').removeClass('hidden').text('No se pudo guardar.');
+                }).always(function () {
+                    $('#guardar-permisos').prop('disabled', false);
+                });
+            });
+            }
+            if ($('#tablaPermisosCategorias').length && $.fn.dataTable) {
+                var idiomaCategorias = $.extend({}, idiomaTabla, { emptyTable: 'No hay categorías para mostrar' });
+                var tablaCategorias = $('#tablaPermisosCategorias').DataTable({
+                    pageLength: 25,
+                    lengthMenu: [[25, 50, 100, -1], [25, 50, 100, 'Todos']],
+                    order: [[0, 'asc']],
+                    columnDefs: [{ orderable: false, targets: -1 }],
+                    language: idiomaCategorias
+                });
+
+                function htmlPermisoCategoria(valor) {
+                    if (parseInt(valor, 10) === 1) {
+                        return '<span class="text-green-600 text-lg" title="Sí"><i class="fa-solid fa-check"></i></span>';
+                    }
+                    return '<span class="text-red-600 text-lg" title="No"><i class="fa-solid fa-xmark"></i></span>';
+                }
+
+                function cerrarModalCategoria() {
+                    $('#modal-permisos-categoria').addClass('hidden').removeClass('flex');
+                    $('#categoria-error').addClass('hidden').text('');
+                }
+
+                $('#tablaPermisosCategorias').on('click', '.btn-editar-categoria', function () {
+                    var boton = $(this);
+                    $('#categoria-id').val(boton.attr('data-id'));
+                    $('#categoria-nombre').text(boton.attr('data-categoria'));
+                    $('#categoria-ver-pagos').prop('checked', boton.attr('data-ver-pagos') === '1');
+                    $('#categoria-error').addClass('hidden').text('');
+                    $('#modal-permisos-categoria').removeClass('hidden').addClass('flex');
+                });
+
+                $('#cerrar-modal-categoria, #cancelar-modal-categoria').on('click', cerrarModalCategoria);
+
+                $('#form-permisos-categoria').on('submit', function (evento) {
+                    evento.preventDefault();
+                    var verPagos = $('#categoria-ver-pagos').is(':checked') ? 1 : 0;
+                    $('#guardar-categoria').prop('disabled', true);
+                    $.ajax({
+                        url: 'ajax_permisos.php',
+                        type: 'POST',
+                        dataType: 'json',
+                        data: {
+                            id_categoria: $('#categoria-id').val(),
+                            ver_pagos: verPagos
+                        }
+                    }).done(function (respuesta) {
+                        if (!respuesta || !respuesta.ok) {
+                            $('#categoria-error').removeClass('hidden').text((respuesta && respuesta.error) ? respuesta.error : 'No se pudo guardar.');
+                            return;
+                        }
+                        var valor = parseInt(respuesta.ver_pagos, 10) === 1 ? 1 : 0;
+                        var boton = $('#tablaPermisosCategorias .btn-editar-categoria[data-id="' + respuesta.id + '"]');
+                        boton.attr('data-ver-pagos', valor);
+                        var celda = boton.closest('tr').find('td.perm-categoria-celda');
+                        celda.html(htmlPermisoCategoria(valor));
+                        if (celda.length) {
+                            tablaCategorias.cell(celda.get(0)).invalidate();
+                        }
+                        cerrarModalCategoria();
+                    }).fail(function () {
+                        $('#categoria-error').removeClass('hidden').text('No se pudo guardar.');
                     }).always(function () {
-                        $('#guardar-permisos').prop('disabled', false);
+                        $('#guardar-categoria').prop('disabled', false);
                     });
                 });
             }
