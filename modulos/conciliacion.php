@@ -97,6 +97,7 @@ function iniciarConciliacion() {
         return;
     }
     var tabla = $('#tablaConciliacion').DataTable({
+        fixedHeader: { header: true, headerOffset: 64 },
         data: [],
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100, 500, -1], [10, 25, 50, 100, 500, 'Todas']],

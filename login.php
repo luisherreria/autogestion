@@ -98,6 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['tipos_correo'] = array();
             $_SESSION['permisos'] = permisosCompletos();
             $_SESSION['categoria'] = '';
+            $_SESSION['categoria_descripcion'] = '';
             cargarPerfilEnSesion();
             completarPrestadorNotificaciones(Database::getConnection());
             $_SESSION['mostrar_bienvenida'] = 1;
@@ -121,6 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['tipos_correo'] = array();
             $_SESSION['permisos'] = permisosCompletos();
             $_SESSION['categoria'] = '';
+            $_SESSION['categoria_descripcion'] = '';
             cargarPerfilEnSesion();
             completarPrestadorNotificaciones(Database::getConnection());
             $_SESSION['mostrar_bienvenida'] = 1;
@@ -180,6 +182,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['mail_pago'] = trim((string) $prestador['MAIL_PAGO']);
                 $_SESSION['mailcontra'] = trim((string) $prestador['MAILCONTRA']);
                 $_SESSION['categoria'] = trim((string) $prestador['CATEG']);
+                $filaCategoria = filaPermisoCategoria($_SESSION['categoria']);
+                $_SESSION['categoria_descripcion'] = $filaCategoria['descripcion'];
                 $_SESSION['tipos_correo'] = $tiposEncontrados;
                 $_SESSION['permisos'] = permisosPorTipos($pdo, $tiposEncontrados);
                 aplicarFiltroCategoriaLiquidaciones();

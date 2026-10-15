@@ -26,7 +26,7 @@ try {
          ORDER BY tipo_correo ASC'
     )->fetchAll();
     $filasCategorias = $pdo->query(
-        'SELECT id, categoria, ver_pagos
+        'SELECT id, categoria, descripcion, ver_pagos
          FROM a_permisos_categorias
          ORDER BY categoria ASC'
     )->fetchAll();
@@ -114,6 +114,7 @@ function iconoEstadoPermiso($valor)
         <thead>
             <tr>
                 <th>Categoría</th>
+                <th>Descripción</th>
                 <th class="text-center">Liquidaciones</th>
                 <th>Acciones</th>
             </tr>
@@ -121,13 +122,15 @@ function iconoEstadoPermiso($valor)
         <tbody>
             <?php foreach ($filasCategorias as $filaCategoria) { ?>
                 <tr>
-                    <td><?php echo h($filaCategoria['categoria']); ?></td>
+                    <td class="font-medium"><?php echo h($filaCategoria['categoria']); ?></td>
+                    <td class="perm-categoria-desc"><?php echo h(isset($filaCategoria['descripcion']) ? $filaCategoria['descripcion'] : ''); ?></td>
                     <td class="text-center perm-categoria-celda"><?php echo iconoEstadoPermiso($filaCategoria['ver_pagos']); ?></td>
                     <td>
                         <button type="button"
                                 class="btn-editar-categoria inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm rounded-lg px-3 py-1.5"
                                 data-id="<?php echo (int) $filaCategoria['id']; ?>"
                                 data-categoria="<?php echo h($filaCategoria['categoria']); ?>"
+                                data-descripcion="<?php echo h($filaCategoria['descripcion']); ?>"
                                 data-ver-pagos="<?php echo ((int) $filaCategoria['ver_pagos'] === 1) ? '1' : '0'; ?>">
                             <i class="fa-solid fa-pen"></i> Editar
                         </button>
@@ -150,6 +153,10 @@ function iconoEstadoPermiso($valor)
             <input type="hidden" name="id_categoria" id="categoria-id" value="">
             <p class="text-sm text-slate-600">Categoría: <span id="categoria-nombre" class="font-medium text-slate-900"></span></p>
             <div id="categoria-error" class="hidden rounded-lg bg-red-50 text-red-700 px-3 py-2 text-sm"></div>
+            <div>
+                <label for="categoria-descripcion" class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
+                <input type="text" name="descripcion" id="categoria-descripcion" maxlength="100" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+            </div>
             <label class="flex items-center gap-2 text-sm text-slate-700">
                 <input type="checkbox" name="ver_pagos" id="categoria-ver-pagos" value="1" class="rounded border-slate-300">
                 Liquidaciones

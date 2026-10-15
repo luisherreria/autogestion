@@ -7,4 +7,10 @@ if (!isset($_SESSION['logueado']) || $_SESSION['logueado'] != 1) {
     exit;
 }
 
+if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') {
+    $_SESSION['categoria_descripcion'] = '';
+} else {
+    $filaCategoria = filaPermisoCategoria(isset($_SESSION['categoria']) ? $_SESSION['categoria'] : '');
+    $_SESSION['categoria_descripcion'] = $filaCategoria['descripcion'];
+}
 aplicarFiltroCategoriaLiquidaciones();

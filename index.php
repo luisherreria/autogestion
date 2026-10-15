@@ -103,6 +103,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
         }
     </style>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
     <?php if ($seccion === 'auditoria_vista' || $seccion === 'pagos' || $seccion === 'obras_sociales' || $seccion === 'autorizaciones' || $seccion === 'conciliacion') { ?>
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
     <?php } ?>
@@ -211,6 +212,25 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
         #tablaAutorizaciones_wrapper .dataTables_info,
         #tablaAutorizaciones_wrapper .dataTables_paginate {
             margin-top: 0.75rem;
+        }
+        /* Garantizar que el thead de las grillas DataTables quede fijo al scrollear */
+        table.dataTable thead th {
+            position: sticky !important;
+            top: 64px !important;
+            z-index: 20 !important;
+            background-color: #f8fafc !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        div.dataTables_scrollHead {
+            position: sticky !important;
+            top: 64px !important;
+            z-index: 20 !important;
+            background-color: #f8fafc !important;
+        }
+        table.fixedHeader-floating thead th,
+        table.fixedHeader-locked thead th {
+            position: static !important;
+            top: auto !important;
         }
     </style>
 </head>
@@ -377,6 +397,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
     <?php if ($seccion === 'auditoria_vista' || $seccion === 'pagos' || $seccion === 'obras_sociales' || $seccion === 'autorizaciones' || $seccion === 'conciliacion') { ?>
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -386,6 +407,14 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
     <?php } ?>
     <script>
+        if (window.jQuery && $.fn.dataTable) {
+            $.extend(true, $.fn.dataTable.defaults, {
+                fixedHeader: {
+                    header: true,
+                    headerOffset: 64
+                }
+            });
+        }
         function botonesExportacionGrilla(extra) {
             extra = extra || {};
             function armar(tipo, icono, color, titulo) {
@@ -544,6 +573,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
             if ($('#tablaObrasSociales').length && $.fn.dataTable) {
                 var idiomaObras = $.extend({}, idiomaTabla, { emptyTable: 'No hay obras sociales para mostrar' });
                 $('#tablaObrasSociales').DataTable({
+                    fixedHeader: { header: true, headerOffset: 64 },
                     pageLength: 25,
                     lengthMenu: [[25, 50, 100, -1], [25, 50, 100, 'Todos']],
                     order: [[0, 'asc']],
@@ -554,6 +584,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
             }
             if ($('#tabla-datos').length) {
                 $('#tabla-datos').DataTable({
+                    fixedHeader: { header: true, headerOffset: 64 },
                     pageLength: 25,
                     order: [],
                     language: idiomaTabla
@@ -568,6 +599,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                     return '<a href="' + url + '" target="_blank" class="text-xs text-red-600 hover:underline"><i class="fa-solid fa-file-pdf"></i> ' + etiqueta + '</a>';
                 }
                 var tabla = $('#tablaPagos').DataTable({
+                    fixedHeader: { header: true, headerOffset: 64 },
                     ajax: 'ajax_pagos.php',
                     pageLength: 25,
                     lengthMenu: [[25, 50, 100, 500, -1], [25, 50, 100, 500, 'Todos']],
@@ -721,6 +753,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
             }
             if ($('#tablaNotificaciones').length && $.fn.dataTable) {
                 $('#tablaNotificaciones').DataTable({
+                    fixedHeader: { header: true, headerOffset: 64 },
                     ajax: 'ajax_listar_notificaciones.php',
                     pageLength: 25,
                     lengthMenu: [[25, 50, 100, 500, -1], [25, 50, 100, 500, 'Todas']],
@@ -770,6 +803,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
             if ($('#tablaPermisos').length && $.fn.dataTable) {
                 var idiomaPermisos = $.extend({}, idiomaTabla, { emptyTable: 'No hay permisos para mostrar' });
                 var tablaPermisos = $('#tablaPermisos').DataTable({
+                    fixedHeader: { header: true, headerOffset: 64 },
                     pageLength: 25,
                     lengthMenu: [[25, 50, 100, -1], [25, 50, 100, 'Todos']],
                     order: [[0, 'asc']],
@@ -856,10 +890,15 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
             if ($('#tablaPermisosCategorias').length && $.fn.dataTable) {
                 var idiomaCategorias = $.extend({}, idiomaTabla, { emptyTable: 'No hay categorías para mostrar' });
                 var tablaCategorias = $('#tablaPermisosCategorias').DataTable({
+                    fixedHeader: { header: true, headerOffset: 64 },
                     pageLength: 25,
                     lengthMenu: [[25, 50, 100, -1], [25, 50, 100, 'Todos']],
                     order: [[0, 'asc']],
-                    columnDefs: [{ orderable: false, targets: -1 }],
+                    autoWidth: false,
+                    columnDefs: [
+                        { targets: 1, width: '45%' },
+                        { orderable: false, targets: -1 }
+                    ],
                     language: idiomaCategorias
                 });
 
@@ -879,6 +918,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                     var boton = $(this);
                     $('#categoria-id').val(boton.attr('data-id'));
                     $('#categoria-nombre').text(boton.attr('data-categoria'));
+                    $('#categoria-descripcion').val(boton.attr('data-descripcion') || '');
                     $('#categoria-ver-pagos').prop('checked', boton.attr('data-ver-pagos') === '1');
                     $('#categoria-error').addClass('hidden').text('');
                     $('#modal-permisos-categoria').removeClass('hidden').addClass('flex');
@@ -889,6 +929,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                 $('#form-permisos-categoria').on('submit', function (evento) {
                     evento.preventDefault();
                     var verPagos = $('#categoria-ver-pagos').is(':checked') ? 1 : 0;
+                    var descripcion = $.trim($('#categoria-descripcion').val() || '');
                     $('#guardar-categoria').prop('disabled', true);
                     $.ajax({
                         url: 'ajax_permisos.php',
@@ -896,7 +937,8 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                         dataType: 'json',
                         data: {
                             id_categoria: $('#categoria-id').val(),
-                            ver_pagos: verPagos
+                            ver_pagos: verPagos,
+                            descripcion: descripcion
                         }
                     }).done(function (respuesta) {
                         if (!respuesta || !respuesta.ok) {
@@ -904,8 +946,15 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                             return;
                         }
                         var valor = parseInt(respuesta.ver_pagos, 10) === 1 ? 1 : 0;
+                        var textoDescripcion = respuesta.descripcion || '';
                         var boton = $('#tablaPermisosCategorias .btn-editar-categoria[data-id="' + respuesta.id + '"]');
                         boton.attr('data-ver-pagos', valor);
+                        boton.attr('data-descripcion', textoDescripcion);
+                        var celdaDescripcion = boton.closest('tr').find('td.perm-categoria-desc');
+                        celdaDescripcion.text(textoDescripcion);
+                        if (celdaDescripcion.length) {
+                            tablaCategorias.cell(celdaDescripcion.get(0)).invalidate();
+                        }
                         var celda = boton.closest('tr').find('td.perm-categoria-celda');
                         celda.html(htmlPermisoCategoria(valor));
                         if (celda.length) {
@@ -927,6 +976,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                     infoFiltered: '(filtrado de _MAX_ órdenes de los últimos 90 días)'
                 });
                 var tablaAutorizaciones = $('#tablaAutorizaciones').DataTable({
+                    fixedHeader: { header: true, headerOffset: 64 },
                     pageLength: 25,
                     lengthMenu: [[25, 50, 100, 500, -1], [25, 50, 100, 500, 'Todas']],
                     order: [[1, 'desc']],
@@ -951,6 +1001,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
             }
             if ($('#tabla-auditoria').length) {
                 var tablaAuditoria = $('#tabla-auditoria').DataTable({
+                    fixedHeader: { header: true, headerOffset: 64 },
                     pageLength: 25,
                     lengthMenu: [[25, 50, 100, 500, -1], [25, 50, 100, 500, 'Todas']],
                     order: [],
