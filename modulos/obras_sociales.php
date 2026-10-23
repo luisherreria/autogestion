@@ -8,22 +8,92 @@ if (!defined('PORTAL_AUTOGESTION')) {
 
 $filas = array();
 $error = '';
-$hoy = date('Y-m-d');
+$esAdmin = isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin';
+$codigoPrestador = isset($_SESSION['codigo']) ? trim((string) $_SESSION['codigo']) : '';
 
-$sql = "SELECT TRIM(TACODIGO) AS codigo,
-               TRIM(TADESCRIP) AS nombre,
-               TAFECHAINI,
-               TAFECHAFIN
-        FROM OBRASOC
-        WHERE TAFECHAFIN >= (CURDATE() - INTERVAL 180 DAY)
-          AND UPPER(TRIM(TACODIGO)) <> 'OSSEG U'
-        ORDER BY TRIM(TACODIGO) ASC";
+$sqlAdmin = "SELECT TRIM(TACODIGO) AS codigo,
+                    TRIM(TADESCRIP) AS nombre,
+                    TAFECHAINI,
+                    CASE
+                      WHEN TAFECHAFIN IS NOT NULL
+                       AND TAFECHAFIN <> '0000-00-00 00:00:00'
+                       AND TAFECHAFIN <> '0000-00-00'
+                       AND CAST(TAFECHAFIN AS CHAR) <> ''
+                       AND TAFECHAFIN <= CURDATE()
+                      THEN TAFECHAFIN
+                      ELSE NULL
+                    END AS fechabaja,
+                    CASE
+                      WHEN TAFECHAFIN IS NOT NULL
+                       AND TAFECHAFIN <> '0000-00-00 00:00:00'
+                       AND TAFECHAFIN <> '0000-00-00'
+                       AND CAST(TAFECHAFIN AS CHAR) <> ''
+                       AND TAFECHAFIN <= CURDATE()
+                      THEN 1
+                      ELSE 0
+                    END AS es_baja
+             FROM obrasoc
+             WHERE UPPER(TRIM(TACODIGO)) <> 'OSSEG U'
+               AND (
+                     TAFECHAFIN IS NULL
+                     OR TAFECHAFIN = '0000-00-00 00:00:00'
+                     OR TAFECHAFIN = '0000-00-00'
+                     OR CAST(TAFECHAFIN AS CHAR) = ''
+                     OR TAFECHAFIN > CURDATE()
+                     OR (
+                         TAFECHAFIN <= CURDATE()
+                         AND TAFECHAFIN >= (CURDATE() - INTERVAL 180 DAY)
+                     )
+                   )
+             ORDER BY codigo ASC";
+
+$sqlPrestador = "SELECT TRIM(s.TACODIGO) AS codigo,
+                        MAX(TRIM(s.TADESCRIP)) AS nombre,
+                        MIN(s.TAFECHAINI) AS TAFECHAINI,
+                        MAX(CASE
+                              WHEN o.fechabaja IS NOT NULL
+                               AND o.fechabaja <> '0000-00-00'
+                               AND CAST(o.fechabaja AS CHAR) <> ''
+                               AND o.fechabaja <= CURDATE()
+                              THEN o.fechabaja
+                              ELSE NULL
+                            END) AS fechabaja,
+                        MIN(CASE
+                              WHEN o.fechabaja IS NULL
+                                OR o.fechabaja = '0000-00-00'
+                                OR CAST(o.fechabaja AS CHAR) = ''
+                                OR o.fechabaja > CURDATE()
+                              THEN 0
+                              ELSE 1
+                            END) AS es_baja
+                 FROM cartilla.obramed o
+                 INNER JOIN obrasoc s ON TRIM(o.obrasoc) = TRIM(s.TACODIGO)
+                 WHERE TRIM(o.medico) = :codigo_prestador
+                   AND UPPER(TRIM(s.TACODIGO)) <> 'OSSEG U'
+                   AND (
+                         o.fechabaja IS NULL
+                         OR o.fechabaja = '0000-00-00'
+                         OR CAST(o.fechabaja AS CHAR) = ''
+                         OR o.fechabaja > CURDATE()
+                         OR (
+                             o.fechabaja <= CURDATE()
+                             AND o.fechabaja >= (CURDATE() - INTERVAL 180 DAY)
+                         )
+                       )
+                 GROUP BY TRIM(s.TACODIGO)
+                 ORDER BY codigo ASC";
 
 try {
     $pdo = Database::getConnection();
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute();
-    $filas = $stmt->fetchAll();
+    if ($esAdmin) {
+        $stmt = $pdo->prepare($sqlAdmin);
+        $stmt->execute();
+        $filas = $stmt->fetchAll();
+    } elseif ($codigoPrestador !== '') {
+        $stmt = $pdo->prepare($sqlPrestador);
+        $stmt->execute(array(':codigo_prestador' => $codigoPrestador));
+        $filas = $stmt->fetchAll();
+    }
 } catch (Exception $e) {
     $error = $e->getMessage();
 }
@@ -42,7 +112,7 @@ function fechaObra($valor)
 }
 ?>
 <style>
-    #tablaObrasSociales tr.fila-baja td { background-color: #fee2e2 !important; color: #991b1b; cursor: help; }
+    #tablaObrasSociales tr.fila-baja td { background-color: #fee2e2 !important; color: #7f1d1d; cursor: help; }
     .badge-estado { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 11px; font-weight: 700; color: #fff; }
     .badge-estado.bg-danger { background: #dc2626; }
     .badge-estado.bg-success { background: #16a34a; }
@@ -62,16 +132,14 @@ function fechaObra($valor)
         </thead>
         <tbody>
             <?php foreach ($filas as $fila) {
-                $finIso = trim((string) $fila['TAFECHAFIN']);
-                $finDia = substr($finIso, 0, 10);
                 $iniIso = trim((string) $fila['TAFECHAINI']);
                 $iniDia = substr($iniIso, 0, 10);
-                $esBaja = ($finDia !== '' && $finDia < $hoy);
-                $fechaFin = fechaObra($fila['TAFECHAFIN']);
+                $esBaja = ((int) $fila['es_baja'] === 1);
+                $fechaFin = fechaObra($fila['fechabaja']);
                 $fechaIni = fechaObra($fila['TAFECHAINI']);
                 $avisoBaja = $esBaja ? 'DADA DE BAJA DESDE LA FECHA ' . ($fechaFin === '' ? 'S/D' : $fechaFin) : '';
                 ?>
-                <tr class="<?php echo $esBaja ? 'fila-baja' : ''; ?>" <?php echo $avisoBaja !== '' ? 'title="' . h($avisoBaja) . '"' : ''; ?>>
+                <tr class="<?php echo $esBaja ? 'fila-baja bg-red-100 text-red-900' : ''; ?>" <?php echo $avisoBaja !== '' ? 'title="' . h($avisoBaja) . '"' : ''; ?>>
                     <td <?php echo $avisoBaja !== '' ? 'title="' . h($avisoBaja) . '"' : ''; ?>><?php echo h($fila['codigo']); ?></td>
                     <td <?php echo $avisoBaja !== '' ? 'title="' . h($avisoBaja) . '"' : ''; ?>><?php echo h($fila['nombre']); ?></td>
                     <td data-order="<?php echo h($iniDia); ?>" <?php echo $avisoBaja !== '' ? 'title="' . h($avisoBaja) . '"' : ''; ?>><?php echo $fechaIni === '' ? 'S/D' : h($fechaIni); ?></td>

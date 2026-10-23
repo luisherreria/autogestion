@@ -94,6 +94,25 @@ if (!isset($categorias[$categoria]) || !isset($alcances[$alcance])) {
     } catch (Exception $e) {
         $mensaje = 'No se pudo validar el prestador. ' . $e->getMessage();
     }
+} elseif ($alcance === 'obra_social') {
+    try {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare(
+            'SELECT TRIM(TACODIGO) AS codigo
+             FROM obrasoc
+             WHERE TRIM(TACODIGO) = :codigo
+             LIMIT 1'
+        );
+        $stmt->execute(array(':codigo' => $codigo));
+        $obra = $stmt->fetch();
+        if (!$obra) {
+            $mensaje = 'La obra social no existe. Elija una de la lista.';
+        } else {
+            $codigo = $obra['codigo'];
+        }
+    } catch (Exception $e) {
+        $mensaje = 'No se pudo validar la obra social. ' . $e->getMessage();
+    }
 }
 
 if ($mensaje !== '') {

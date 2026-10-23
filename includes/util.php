@@ -206,6 +206,301 @@ function buscarPrestadores($pdo, $texto, $limite)
     return array('items' => $filas, 'mas' => $mas);
 }
 
+function buscarObrasSociales($pdo, $texto, $limite)
+{
+    $texto = trim((string) $texto);
+    $texto = str_replace(array('%', '_'), '', $texto);
+    $limite = (int) $limite;
+    if ($limite < 1) {
+        $limite = 15;
+    }
+    if ($limite > 30) {
+        $limite = 30;
+    }
+    if ($texto === '') {
+        return array('items' => array(), 'mas' => false);
+    }
+
+    $like = '%' . $texto . '%';
+    $sql = 'SELECT TRIM(TACODIGO) AS codigo, TRIM(TADESCRIP) AS nombre
+            FROM obrasoc
+            WHERE TRIM(TACODIGO) LIKE :por_codigo
+               OR TADESCRIP LIKE :por_nombre
+            GROUP BY TRIM(TACODIGO), TRIM(TADESCRIP)
+            ORDER BY CASE WHEN TRIM(TACODIGO) = :exacto THEN 0 ELSE 1 END, TRIM(TACODIGO)
+            LIMIT ' . ($limite + 1);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(array(
+        ':por_codigo' => $like,
+        ':por_nombre' => $like,
+        ':exacto' => $texto,
+    ));
+    $filas = $stmt->fetchAll();
+    $mas = false;
+    if (count($filas) > $limite) {
+        $mas = true;
+        $filas = array_slice($filas, 0, $limite);
+    }
+    return array('items' => $filas, 'mas' => $mas);
+}
+
+function esArchivoDePrueba($nombre)
+{
+    $base = strtolower(basename(str_replace('\\', '/', (string) $nombre)));
+    if ($base === '') {
+        return false;
+    }
+    $marcas = array('prueba', 'muestra', 'dummy');
+    foreach ($marcas as $marca) {
+        if (strpos($base, $marca) !== false) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function codigoPrestadorSesion()
+{
+    if (isset($_SESSION['codigo_prestador']) && trim((string) $_SESSION['codigo_prestador']) !== '') {
+        return trim((string) $_SESSION['codigo_prestador']);
+    }
+    if (isset($_SESSION['codigo'])) {
+        return trim((string) $_SESSION['codigo']);
+    }
+    return '';
+}
+
+function obrasSocialesHabilitadasPrestador($pdo, $codigoPrestador)
+{
+    $codigos = array();
+    $codigoPrestador = trim((string) $codigoPrestador);
+    if ($codigoPrestador === '') {
+        return $codigos;
+    }
+    $stmt = $pdo->prepare(
+        "SELECT DISTINCT TRIM(obrasoc) AS codigo
+         FROM cartilla.obramed
+         WHERE TRIM(medico) = :codigo_prestador
+           AND (
+                fechabaja IS NULL
+                OR TRIM(CAST(fechabaja AS CHAR)) = ''
+                OR fechabaja = '0000-00-00'
+                OR fechabaja > CURDATE()
+                OR (
+                    fechabaja <= CURDATE()
+                    AND fechabaja >= (CURDATE() - INTERVAL 180 DAY)
+                )
+           )"
+    );
+    $stmt->execute(array(':codigo_prestador' => $codigoPrestador));
+    foreach ($stmt->fetchAll() as $fila) {
+        $obra = trim((string) $fila['codigo']);
+        if ($obra !== '' && !in_array($obra, $codigos, true)) {
+            $codigos[] = $obra;
+        }
+    }
+    return $codigos;
+}
+
+function clasificarArchivosDocumentales($filas)
+{
+    $generales = array();
+    $porObra = array();
+    $porPrestador = array();
+    $vistos = array();
+    foreach ($filas as $fila) {
+        $nombre = isset($fila['nombre_archivo']) ? (string) $fila['nombre_archivo'] : '';
+        $ruta = isset($fila['ruta']) ? (string) $fila['ruta'] : '';
+        if (esArchivoDePrueba($nombre) || esArchivoDePrueba($ruta)) {
+            continue;
+        }
+        $clave = $ruta !== '' ? $ruta : $nombre;
+        if ($clave === '' || isset($vistos[$clave])) {
+            continue;
+        }
+        $vistos[$clave] = true;
+        $fila['codigo'] = isset($fila['codigo_asociado']) ? trim((string) $fila['codigo_asociado']) : '';
+        $alcance = isset($fila['alcance']) ? (string) $fila['alcance'] : '';
+        if ($alcance === 'obra_social' || $alcance === 'obrasocial') {
+            $porObra[] = $fila;
+        } elseif ($alcance === 'prestador') {
+            $porPrestador[] = $fila;
+        } else {
+            $generales[] = $fila;
+        }
+    }
+    return array(
+        'generales' => $generales,
+        'por_obra' => $porObra,
+        'por_prestador' => $porPrestador,
+    );
+}
+
+function archivosDocumentales($pdo, $categoria, $esAdmin, $codigoPrestador)
+{
+    $categoria = trim((string) $categoria);
+    $codigoPrestador = trim((string) $codigoPrestador);
+    if ($esAdmin) {
+        $stmt = $pdo->prepare(
+            'SELECT nombre_archivo, ruta, categoria, alcance, codigo_asociado, fecha
+             FROM archivos_subidos
+             WHERE categoria = :categoria
+             ORDER BY nombre_archivo ASC'
+        );
+        $stmt->execute(array(':categoria' => $categoria));
+        return clasificarArchivosDocumentales($stmt->fetchAll());
+    }
+
+    $sql = "SELECT nombre_archivo, ruta, categoria, alcance, codigo_asociado, fecha
+            FROM archivos_subidos
+            WHERE categoria = :categoria
+              AND (
+                    alcance = 'general'
+                    OR (alcance = 'prestador' AND TRIM(codigo_asociado) = :codigo_prestador)";
+    $params = array(
+        ':categoria' => $categoria,
+        ':codigo_prestador' => $codigoPrestador,
+    );
+    $obras = obrasSocialesHabilitadasPrestador($pdo, $codigoPrestador);
+    if (count($obras) > 0) {
+        $marcas = array();
+        foreach ($obras as $indice => $obra) {
+            $clave = ':obra' . $indice;
+            $marcas[] = $clave;
+            $params[$clave] = $obra;
+        }
+        $sql .= " OR ((alcance = 'obra_social' OR alcance = 'obrasocial') AND TRIM(codigo_asociado) IN (" . implode(', ', $marcas) . '))';
+    }
+    $sql .= ') ORDER BY nombre_archivo ASC';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return clasificarArchivosDocumentales($stmt->fetchAll());
+}
+
+function rutaRelativaArchivoSubido($fila)
+{
+    $ruta = str_replace('\\', '/', isset($fila['ruta']) ? (string) $fila['ruta'] : '');
+    $categoria = isset($fila['categoria']) ? trim((string) $fila['categoria']) : '';
+    $prefijo = 'archivos/' . $categoria . '/';
+    if ($categoria !== '' && strpos($ruta, $prefijo) === 0) {
+        return substr($ruta, strlen($prefijo));
+    }
+    return basename($ruta);
+}
+
+function iconoArchivoDocumental($archivo)
+{
+    $extension = strtolower(pathinfo((string) $archivo, PATHINFO_EXTENSION));
+    if ($extension === 'pdf') {
+        return 'fa-file-pdf text-red-600';
+    }
+    if (in_array($extension, array('xls', 'xlsx', 'csv'), true)) {
+        return 'fa-file-excel text-green-600';
+    }
+    if (in_array($extension, array('doc', 'docx'), true)) {
+        return 'fa-file-word text-blue-700';
+    }
+    if (in_array($extension, array('png', 'jpg', 'jpeg'), true)) {
+        return 'fa-file-image text-sky-600';
+    }
+    return 'fa-file text-slate-500';
+}
+
+function agruparArchivosPorCodigo($filas)
+{
+    $grupos = array();
+    foreach ($filas as $fila) {
+        $codigo = isset($fila['codigo']) ? trim((string) $fila['codigo']) : '';
+        if ($codigo === '') {
+            $codigo = 'Sin código';
+        }
+        if (!isset($grupos[$codigo])) {
+            $grupos[$codigo] = array();
+        }
+        $grupos[$codigo][] = $fila;
+    }
+    ksort($grupos);
+    return $grupos;
+}
+
+function pintarTarjetasDocumentales($filas, $categoria)
+{
+    if (count($filas) === 0) {
+        echo '<p class="text-sm text-slate-500">No hay archivos en esta sección.</p>';
+        return;
+    }
+    echo '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">';
+    foreach ($filas as $fila) {
+        $nombre = isset($fila['nombre_archivo']) ? (string) $fila['nombre_archivo'] : '';
+        $codigo = isset($fila['codigo']) ? trim((string) $fila['codigo']) : '';
+        $fila['categoria'] = $categoria;
+        echo '<article class="bg-white rounded-xl shadow border border-slate-200 p-6 flex flex-col items-center text-center">';
+        echo '<i class="fa-solid ' . h(iconoArchivoDocumental($nombre)) . ' text-6xl mb-4"></i>';
+        echo '<h3 class="font-medium text-slate-800 break-all mb-1">' . h($nombre) . '</h3>';
+        if ($codigo !== '') {
+            echo '<p class="text-xs text-slate-500 mb-4">' . h($codigo) . '</p>';
+        } else {
+            echo '<div class="mb-4"></div>';
+        }
+        echo '<a href="' . h(urlDescarga($categoria, rutaRelativaArchivoSubido($fila), false)) . '"';
+        echo ' class="mt-auto inline-flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white text-sm rounded-lg px-4 py-2">';
+        echo '<i class="fa-solid fa-download"></i> Descargar</a>';
+        echo '</article>';
+    }
+    echo '</div>';
+}
+
+function pintarSeccionDocumental($titulo, $filas, $categoria, $agrupar)
+{
+    echo '<section class="mb-8">';
+    echo '<h2 class="text-lg font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-200">' . h($titulo) . '</h2>';
+    if (count($filas) === 0) {
+        echo '<p class="text-sm text-slate-500">No hay archivos en esta sección.</p>';
+        echo '</section>';
+        return;
+    }
+    if (!$agrupar) {
+        pintarTarjetasDocumentales($filas, $categoria);
+        echo '</section>';
+        return;
+    }
+    foreach (agruparArchivosPorCodigo($filas) as $codigo => $grupo) {
+        if (count($grupo) === 0) {
+            continue;
+        }
+        echo '<h3 class="text-sm font-medium text-slate-600 mt-4 mb-3">' . h($codigo) . '</h3>';
+        pintarTarjetasDocumentales($grupo, $categoria);
+    }
+    echo '</section>';
+}
+
+function mostrarModuloDocumental($categoria, $tituloPrestador)
+{
+    $esAdmin = isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin';
+    $codigoPrestador = codigoPrestadorSesion();
+    $grupos = array(
+        'generales' => array(),
+        'por_obra' => array(),
+        'por_prestador' => array(),
+    );
+    $error = '';
+    try {
+        $pdo = Database::getConnection();
+        asegurarTablaArchivos($pdo);
+        $grupos = archivosDocumentales($pdo, $categoria, $esAdmin, $codigoPrestador);
+    } catch (Exception $e) {
+        $error = $e->getMessage();
+    }
+    if ($error !== '') {
+        echo '<div class="rounded-lg bg-red-50 text-red-700 px-4 py-3 mb-4 text-sm">' . h($error) . '</div>';
+        return;
+    }
+    pintarSeccionDocumental('Archivos Generales / Globales', $grupos['generales'], $categoria, false);
+    pintarSeccionDocumental('Por Obra Social Específica', $grupos['por_obra'], $categoria, true);
+    $tituloTercero = $esAdmin ? 'Por Prestador Específico' : $tituloPrestador;
+    pintarSeccionDocumental($tituloTercero, $grupos['por_prestador'], $categoria, true);
+}
+
 function asegurarTablaArchivos($pdo)
 {
     $pdo->exec(
@@ -288,7 +583,13 @@ function listarArchivosVisibles($directorio, $carpetasPermitidas)
         }
     }
 
-    return $items;
+    $reales = array();
+    foreach ($items as $item) {
+        if (!esArchivoDePrueba($item)) {
+            $reales[] = $item;
+        }
+    }
+    return $reales;
 }
 
 function asegurarTablaArchivosCoseguros($pdo)

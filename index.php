@@ -227,10 +227,34 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
             z-index: 20 !important;
             background-color: #f8fafc !important;
         }
+        table.fixedHeader-floating,
+        table.fixedHeader-locked {
+            z-index: 30 !important;
+        }
         table.fixedHeader-floating thead th,
         table.fixedHeader-locked thead th {
             position: static !important;
             top: auto !important;
+        }
+        #modalDetalleOrdenes,
+        #modalDetalleAutRech {
+            z-index: 200;
+        }
+        #modalDetalleOrdenes table.dataTable thead th,
+        #modalDetalleAutRech table.dataTable thead th {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 2 !important;
+            background-color: #f8fafc !important;
+            box-shadow: 0 1px 0 #e2e8f0;
+        }
+        #tablaDetalleOrdenes tbody tr.fila-autorizada td,
+        #tablaDetalleAutRech tbody tr.fila-autorizada td {
+            background-color: #dcfce7 !important;
+        }
+        #tablaDetalleOrdenes tbody tr.fila-rechazada td,
+        #tablaDetalleAutRech tbody tr.fila-rechazada td {
+            background-color: #fee2e2 !important;
         }
     </style>
 </head>
@@ -570,6 +594,19 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                     previous: 'Anterior'
                 }
             };
+            if ($('#tablaArchivos').length && $.fn.dataTable) {
+                var idiomaArchivos = $.extend({}, idiomaTabla, { emptyTable: 'No hay archivos registrados.' });
+                $('#tablaArchivos').DataTable({
+                    fixedHeader: { header: true, headerOffset: 64 },
+                    pageLength: 25,
+                    lengthMenu: [[25, 50, 100, -1], [25, 50, 100, 'Todos']],
+                    order: [[0, 'desc']],
+                    columnDefs: [
+                        { orderable: false, searchable: false, targets: -1 }
+                    ],
+                    language: idiomaArchivos
+                });
+            }
             if ($('#tablaObrasSociales').length && $.fn.dataTable) {
                 var idiomaObras = $.extend({}, idiomaTabla, { emptyTable: 'No hay obras sociales para mostrar' });
                 $('#tablaObrasSociales').DataTable({
@@ -997,6 +1034,190 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                 $('#tablaAutorizaciones_filter').before($('#grupo-estado-autorizaciones'));
                 $('#filtroEstadoAutorizaciones').on('change', function () {
                     tablaAutorizaciones.column(3).search($(this).val(), false, false).draw();
+                });
+            }
+            if ($('#tablaResumenDiario').length && $.fn.dataTable) {
+                var idiomaResumen = $.extend({}, idiomaTabla, { emptyTable: 'No hay órdenes en los últimos 30 días' });
+                var tablaResumenDiario = $('#tablaResumenDiario').DataTable({
+                    fixedHeader: { header: true, headerOffset: 64 },
+                    ajax: {
+                        url: 'ajax_autorizaciones.php',
+                        type: 'POST',
+                        data: function () {
+                            return { accion: 'obtener_resumen_diario' };
+                        },
+                        dataSrc: 'data'
+                    },
+                    pageLength: 31,
+                    order: [[1, 'desc']],
+                    columns: [
+                        { data: 'dia' },
+                        {
+                            data: 'fecha',
+                            render: function (dato, tipo, fila) {
+                                if (tipo === 'sort' || tipo === 'type') {
+                                    return fila.fecha_iso || '';
+                                }
+                                return dato || '';
+                            }
+                        },
+                        {
+                            data: 'total_ordenes',
+                            className: 'text-center',
+                            render: function (dato, tipo, fila) {
+                                if (tipo !== 'display') {
+                                    return dato;
+                                }
+                                return '<button type="button" class="btn-detalle-ordenes text-blue-800 font-semibold hover:underline" data-fecha="' + fila.fecha_iso + '">' + dato + '</button>';
+                            }
+                        },
+                        {
+                            data: 'total_aut_rech',
+                            className: 'text-center',
+                            render: function (dato, tipo, fila) {
+                                if (tipo !== 'display') {
+                                    return dato;
+                                }
+                                return '<button type="button" class="btn-detalle-aut-rech text-blue-800 font-semibold hover:underline" data-fecha="' + fila.fecha_iso + '">' + dato + '</button>';
+                            }
+                        }
+                    ],
+                    language: idiomaResumen
+                });
+
+                function enlacePdfDetalle(url) {
+                    if (!url) {
+                        return '-';
+                    }
+                    return '<a href="' + url + '" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-medium px-3 py-1.5" title="Descargar autorización"><i class="fa-solid fa-file-pdf"></i> PDF</a>';
+                }
+
+                function htmlEstadoDetalle(estado, tipo) {
+                    var texto = estado ? String(estado) : '';
+                    if (tipo !== 'display') {
+                        return texto;
+                    }
+                    if (!texto) {
+                        return '';
+                    }
+                    var clase = 'bg-slate-100 text-slate-700';
+                    if (texto === 'AUTORIZADA') {
+                        clase = 'bg-green-100 text-green-800';
+                    } else if (texto === 'RECHAZADA') {
+                        clase = 'bg-red-100 text-red-800';
+                    }
+                    return '<span class="inline-block rounded-full px-2 py-1 text-xs font-medium ' + clase + '">' + $('<div>').text(texto).html() + '</span>';
+                }
+
+                function pintarFilaDetalle(fila, dato) {
+                    var estado = dato && dato.estado ? String(dato.estado).replace(/^\s+|\s+$/g, '') : '';
+                    $(fila).removeClass('fila-autorizada fila-rechazada');
+                    if (estado === 'AUTORIZADA') {
+                        $(fila).addClass('fila-autorizada');
+                    } else if (estado === 'RECHAZADA') {
+                        $(fila).addClass('fila-rechazada');
+                    }
+                }
+
+                function columnasDetalle(conPdf) {
+                    var columnas = [
+                        { data: 'orden' },
+                        { data: 'fecha' },
+                        { data: 'paciente' },
+                        { data: 'prestador' },
+                        { data: 'obra_social' },
+                        {
+                            data: 'estado',
+                            render: function (dato, tipo) {
+                                return htmlEstadoDetalle(dato, tipo);
+                            }
+                        }
+                    ];
+                    if (conPdf) {
+                        columnas.push({
+                            data: 'pdf',
+                            orderable: false,
+                            className: 'text-center',
+                            render: function (dato, tipo) {
+                                if (tipo !== 'display') {
+                                    return dato || '';
+                                }
+                                return enlacePdfDetalle(dato);
+                            }
+                        });
+                    }
+                    return columnas;
+                }
+
+                function cargarDetalleDia(selectorTabla, fecha, accion, conPdf) {
+                    var tablaExistente = $.fn.dataTable.isDataTable(selectorTabla) ? $(selectorTabla).DataTable() : null;
+                    if (tablaExistente) {
+                        tablaExistente.clear().draw();
+                    }
+                    $.ajax({
+                        url: 'ajax_autorizaciones.php',
+                        type: 'POST',
+                        dataType: 'json',
+                        data: { accion: accion, fecha: fecha }
+                    }).done(function (respuesta) {
+                        var filas = respuesta && respuesta.data ? respuesta.data : [];
+                        if (!respuesta || respuesta.ok === false) {
+                            if (window.Swal) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'No se pudo abrir el detalle',
+                                    text: respuesta && respuesta.mensaje ? respuesta.mensaje : '',
+                                    confirmButtonColor: '#1e40af'
+                                });
+                            }
+                            return;
+                        }
+                        if (!tablaExistente) {
+                            var tablaNueva = $(selectorTabla).DataTable({
+                                fixedHeader: false,
+                                data: filas,
+                                pageLength: 25,
+                                order: [[1, 'desc']],
+                                columns: columnasDetalle(conPdf),
+                                createdRow: pintarFilaDetalle,
+                                language: idiomaTabla
+                            });
+                            if (tablaNueva.fixedHeader && typeof tablaNueva.fixedHeader.disable === 'function') {
+                                tablaNueva.fixedHeader.disable();
+                            }
+                            tablaNueva.columns.adjust();
+                            return;
+                        }
+                        tablaExistente.rows.add(filas).draw();
+                        tablaExistente.columns.adjust();
+                    });
+                }
+
+                $('#tablaResumenDiario').on('click', '.btn-detalle-ordenes', function (evento) {
+                    evento.preventDefault();
+                    var fecha = $(this).attr('data-fecha') || '';
+                    var texto = $(this).closest('tr').find('td').eq(1).text();
+                    $('#tituloDetalleOrdenes').text('Órdenes del ' + texto);
+                    $('table.fixedHeader-floating').hide();
+                    $('#modalDetalleOrdenes').appendTo('body').removeClass('hidden').addClass('flex');
+                    cargarDetalleDia('#tablaDetalleOrdenes', fecha, 'detalle_ordenes', false);
+                });
+                $('#tablaResumenDiario').on('click', '.btn-detalle-aut-rech', function (evento) {
+                    evento.preventDefault();
+                    var fecha = $(this).attr('data-fecha') || '';
+                    var texto = $(this).closest('tr').find('td').eq(1).text();
+                    $('#tituloDetalleAutRech').text('Autorizadas y rechazadas del ' + texto);
+                    $('table.fixedHeader-floating').hide();
+                    $('#modalDetalleAutRech').appendTo('body').removeClass('hidden').addClass('flex');
+                    cargarDetalleDia('#tablaDetalleAutRech', fecha, 'detalle_aut_rech', true);
+                });
+                $('.cerrar-detalle-ordenes').on('click', function () {
+                    $('#modalDetalleOrdenes').addClass('hidden').removeClass('flex');
+                    $('table.fixedHeader-floating').show();
+                });
+                $('.cerrar-detalle-aut-rech').on('click', function () {
+                    $('#modalDetalleAutRech').addClass('hidden').removeClass('flex');
+                    $('table.fixedHeader-floating').show();
                 });
             }
             if ($('#tabla-auditoria').length) {

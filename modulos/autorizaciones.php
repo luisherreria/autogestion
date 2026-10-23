@@ -150,3 +150,76 @@ function rutaPdfAutorizacion($fila)
     </table>
     </div>
 </div>
+<?php if ($esAdmin) { ?>
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+    <div class="px-5 py-4 border-b border-slate-100">
+        <h2 class="text-lg font-semibold text-slate-900">Resumen Diario de Autorizaciones (Últimos 30 Días)</h2>
+    </div>
+    <div class="p-4">
+        <table id="tablaResumenDiario" class="display w-full text-sm">
+            <thead>
+                <tr>
+                    <th>Día</th>
+                    <th>Fecha</th>
+                    <th class="text-center">Cantidad Órdenes</th>
+                    <th class="text-center">Cantidad Aut-Rech</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modalDetalleOrdenes" class="fixed top-16 left-0 right-0 bottom-0 z-[200] hidden items-center justify-center bg-slate-900/50 p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-full flex flex-col">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+            <h2 id="tituloDetalleOrdenes" class="text-lg font-semibold text-slate-900">Órdenes del día</h2>
+            <button type="button" class="cerrar-detalle-ordenes text-slate-500 hover:text-slate-800" aria-label="Cerrar">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="px-5 py-4 overflow-auto">
+            <table id="tablaDetalleOrdenes" class="display w-full text-sm">
+                <thead>
+                    <tr>
+                        <th>Orden</th>
+                        <th>Fecha</th>
+                        <th>Paciente</th>
+                        <th>Prestador</th>
+                        <th>Obra Social</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="modalDetalleAutRech" class="fixed top-16 left-0 right-0 bottom-0 z-[200] hidden items-center justify-center bg-slate-900/50 p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-full flex flex-col">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+            <h2 id="tituloDetalleAutRech" class="text-lg font-semibold text-slate-900">Autorizadas y rechazadas</h2>
+            <button type="button" class="cerrar-detalle-aut-rech text-slate-500 hover:text-slate-800" aria-label="Cerrar">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="px-5 py-4 overflow-auto">
+            <table id="tablaDetalleAutRech" class="display w-full text-sm">
+                <thead>
+                    <tr>
+                        <th>Orden</th>
+                        <th>Fecha</th>
+                        <th>Paciente</th>
+                        <th>Prestador</th>
+                        <th>Obra Social</th>
+                        <th>Estado</th>
+                        <th>Descargar PDF</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<?php } ?>
