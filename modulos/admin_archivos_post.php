@@ -167,11 +167,15 @@ if (!isset($_FILES['archivo']) || !is_array($_FILES['archivo'])) {
                 try {
                     $pdo = Database::getConnection();
                     asegurarTablaArchivos($pdo);
+                    $subtipo = '';
+                    if ($categoria === 'coseguros') {
+                        $subtipo = subtipoCoseguroValido(isset($_POST['subtipo']) ? $_POST['subtipo'] : '');
+                    }
                     $stmt = $pdo->prepare(
                         'INSERT INTO archivos_subidos
-                            (nombre_archivo, ruta, categoria, alcance, codigo_asociado, fecha)
+                            (nombre_archivo, ruta, categoria, alcance, codigo_asociado, subtipo, fecha)
                          VALUES
-                            (:nombre, :ruta, :categoria, :alcance, :codigo, :fecha)'
+                            (:nombre, :ruta, :categoria, :alcance, :codigo, :subtipo, :fecha)'
                     );
                     $rutaRegistro = 'archivos/' . $categoria . '/' . $carpetaAlcance . '/' . $nombreOriginal;
                     $codigoRegistro = ($alcance === 'general') ? '' : $carpetaAlcance;
@@ -182,6 +186,7 @@ if (!isset($_FILES['archivo']) || !is_array($_FILES['archivo'])) {
                         ':categoria' => $categoria,
                         ':alcance' => $alcance,
                         ':codigo' => $codigoRegistro,
+                        ':subtipo' => ($subtipo === '' ? null : $subtipo),
                         ':fecha' => $fechaRegistro,
                     ));
                     if ($categoria === 'coseguros') {

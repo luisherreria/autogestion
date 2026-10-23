@@ -65,6 +65,15 @@ try {
                 <?php } ?>
             </select>
         </div>
+        <div id="bloque-subtipo">
+            <label for="subtipo" class="block text-sm font-medium text-slate-700 mb-1">Sub-tipo</label>
+            <select name="subtipo" id="subtipo" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+                <option value="">Ninguno / Por Defecto</option>
+                <option value="APB">APB</option>
+                <option value="COSEGUROS">COSEGUROS</option>
+            </select>
+            <p class="mt-1 text-xs text-slate-500">Opcional. Si no elige un sub-tipo, el archivo se guarda igual dentro de Coseguros y APB.</p>
+        </div>
         <div>
             <label for="alcance" class="block text-sm font-medium text-slate-700 mb-1">Alcance</label>
             <select name="alcance" id="alcance" class="w-full rounded-lg border border-slate-300 px-3 py-2">
@@ -273,6 +282,15 @@ document.addEventListener('DOMContentLoaded', function () {
         jQuery('#nombre-archivo').text(archivo.name).removeClass('text-red-600').addClass('text-blue-800');
     }
 
+    function actualizarSubtipo() {
+        if (jQuery('#categoria').val() === 'coseguros') {
+            jQuery('#bloque-subtipo').show();
+            return;
+        }
+        jQuery('#bloque-subtipo').hide();
+        jQuery('#subtipo').val('');
+    }
+
     function actualizarAlcance() {
         var alcance = jQuery('#alcance').val();
         limpiarLista();
@@ -296,6 +314,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    jQuery('#categoria').on('change', actualizarSubtipo);
     jQuery('#alcance').on('change', actualizarAlcance);
     jQuery('#codigo-visible').on('input', function () {
         var alcance = jQuery('#alcance').val();
@@ -361,6 +380,7 @@ document.addEventListener('DOMContentLoaded', function () {
             jQuery('#aviso-prestador').text(texto).removeClass('text-green-700').addClass('text-red-600');
         }
     });
+    actualizarSubtipo();
     actualizarAlcance();
 });
 </script>

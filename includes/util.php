@@ -342,7 +342,7 @@ function archivosDocumentales($pdo, $categoria, $esAdmin, $codigoPrestador)
     $codigoPrestador = trim((string) $codigoPrestador);
     if ($esAdmin) {
         $stmt = $pdo->prepare(
-            'SELECT nombre_archivo, ruta, categoria, alcance, codigo_asociado, fecha
+            'SELECT nombre_archivo, ruta, categoria, alcance, codigo_asociado, subtipo, fecha
              FROM archivos_subidos
              WHERE categoria = :categoria
              ORDER BY nombre_archivo ASC'
@@ -351,7 +351,7 @@ function archivosDocumentales($pdo, $categoria, $esAdmin, $codigoPrestador)
         return clasificarArchivosDocumentales($stmt->fetchAll());
     }
 
-    $sql = "SELECT nombre_archivo, ruta, categoria, alcance, codigo_asociado, fecha
+    $sql = "SELECT nombre_archivo, ruta, categoria, alcance, codigo_asociado, subtipo, fecha
             FROM archivos_subidos
             WHERE categoria = :categoria
               AND (
@@ -450,6 +450,33 @@ function pintarTarjetasDocumentales($filas, $categoria)
     echo '</div>';
 }
 
+function subtipoCoseguroValido($valor)
+{
+    $valor = strtoupper(trim((string) $valor));
+    if ($valor === 'APB' || $valor === 'COSEGUROS') {
+        return $valor;
+    }
+    return '';
+}
+
+function pintarGeneralesCoseguros($filas, $categoria)
+{
+    $apb = array();
+    $coseguros = array();
+    foreach ($filas as $fila) {
+        $subtipo = isset($fila['subtipo']) ? strtoupper(trim((string) $fila['subtipo'])) : '';
+        if ($subtipo === 'APB') {
+            $apb[] = $fila;
+        } else {
+            $coseguros[] = $fila;
+        }
+    }
+    echo '<h3 class="text-base font-bold text-slate-900 mt-2 mb-3">APB</h3>';
+    pintarTarjetasDocumentales($apb, $categoria);
+    echo '<h3 class="text-base font-bold text-slate-900 mt-6 mb-3">COSEGUROS</h3>';
+    pintarTarjetasDocumentales($coseguros, $categoria);
+}
+
 function pintarSeccionDocumental($titulo, $filas, $categoria, $agrupar)
 {
     echo '<section class="mb-8">';
@@ -495,7 +522,18 @@ function mostrarModuloDocumental($categoria, $tituloPrestador)
         echo '<div class="rounded-lg bg-red-50 text-red-700 px-4 py-3 mb-4 text-sm">' . h($error) . '</div>';
         return;
     }
-    pintarSeccionDocumental('Archivos Generales / Globales', $grupos['generales'], $categoria, false);
+    if ($categoria === 'coseguros') {
+        echo '<section class="mb-8">';
+        echo '<h2 class="text-lg font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-200">Archivos Generales / Globales</h2>';
+        if (count($grupos['generales']) === 0) {
+            echo '<p class="text-sm text-slate-500">No hay archivos en esta sección.</p>';
+        } else {
+            pintarGeneralesCoseguros($grupos['generales'], $categoria);
+        }
+        echo '</section>';
+    } else {
+        pintarSeccionDocumental('Archivos Generales / Globales', $grupos['generales'], $categoria, false);
+    }
     pintarSeccionDocumental('Por Obra Social Específica', $grupos['por_obra'], $categoria, true);
     $tituloTercero = $esAdmin ? 'Por Prestador Específico' : $tituloPrestador;
     pintarSeccionDocumental($tituloTercero, $grupos['por_prestador'], $categoria, true);
@@ -511,10 +549,15 @@ function asegurarTablaArchivos($pdo)
             categoria VARCHAR(50) NOT NULL,
             alcance VARCHAR(30) NOT NULL,
             codigo_asociado VARCHAR(40) DEFAULT NULL,
+            subtipo VARCHAR(20) DEFAULT NULL,
             fecha DATETIME NOT NULL,
             PRIMARY KEY (id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8"
     );
+    $columnaSubtipo = $pdo->query("SHOW COLUMNS FROM archivos_subidos LIKE 'subtipo'")->fetch();
+    if (!$columnaSubtipo) {
+        $pdo->exec('ALTER TABLE archivos_subidos ADD COLUMN subtipo VARCHAR(20) NULL DEFAULT NULL');
+    }
 }
 
 function carpetasDeDirectorio($directorio)
