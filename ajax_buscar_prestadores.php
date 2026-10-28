@@ -56,6 +56,7 @@ try {
         'SELECT CODIGO, NOMBRE, NOMFANTAS, MAIL, MAIL_AUTO, MAIL_PAGO, MAIL_DEB, MAILCONTRA
          FROM cartilla.ebamp
          WHERE (NOMBRE LIKE :nombre OR NOMFANTAS LIKE :fantas OR CODIGO LIKE :codigo)
+           AND UPPER(TRIM(CONVENIO)) = \'PROPIO\'
            AND (FECHABAJA IS NULL
             OR FECHABAJA = \'0000-00-00\'
             OR FECHABAJA = \'\'

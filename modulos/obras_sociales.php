@@ -11,87 +11,80 @@ $error = '';
 $esAdmin = isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin';
 $codigoPrestador = isset($_SESSION['codigo']) ? trim((string) $_SESSION['codigo']) : '';
 
-$sqlAdmin = "SELECT TRIM(TACODIGO) AS codigo,
-                    TRIM(TADESCRIP) AS nombre,
-                    TAFECHAINI,
-                    CASE
-                      WHEN TAFECHAFIN IS NOT NULL
-                       AND TAFECHAFIN <> '0000-00-00 00:00:00'
-                       AND TAFECHAFIN <> '0000-00-00'
-                       AND CAST(TAFECHAFIN AS CHAR) <> ''
-                       AND TAFECHAFIN <= CURDATE()
-                      THEN TAFECHAFIN
-                      ELSE NULL
-                    END AS fechabaja,
-                    CASE
-                      WHEN TAFECHAFIN IS NOT NULL
-                       AND TAFECHAFIN <> '0000-00-00 00:00:00'
-                       AND TAFECHAFIN <> '0000-00-00'
-                       AND CAST(TAFECHAFIN AS CHAR) <> ''
-                       AND TAFECHAFIN <= CURDATE()
-                      THEN 1
-                      ELSE 0
-                    END AS es_baja
-             FROM obrasoc
-             WHERE UPPER(TRIM(TACODIGO)) <> 'OSSEG U'
-               AND (
-                     TAFECHAFIN IS NULL
-                     OR TAFECHAFIN = '0000-00-00 00:00:00'
-                     OR TAFECHAFIN = '0000-00-00'
-                     OR CAST(TAFECHAFIN AS CHAR) = ''
-                     OR TAFECHAFIN > CURDATE()
-                     OR (
-                         TAFECHAFIN <= CURDATE()
-                         AND TAFECHAFIN >= (CURDATE() - INTERVAL 180 DAY)
-                     )
-                   )
-             ORDER BY codigo ASC";
-
-$sqlPrestador = "SELECT TRIM(s.TACODIGO) AS codigo,
-                        MAX(TRIM(s.TADESCRIP)) AS nombre,
-                        MIN(s.TAFECHAINI) AS TAFECHAINI,
-                        MAX(CASE
-                              WHEN o.fechabaja IS NOT NULL
-                               AND o.fechabaja <> '0000-00-00'
-                               AND CAST(o.fechabaja AS CHAR) <> ''
-                               AND o.fechabaja <= CURDATE()
-                              THEN o.fechabaja
-                              ELSE NULL
-                            END) AS fechabaja,
-                        MIN(CASE
-                              WHEN o.fechabaja IS NULL
-                                OR o.fechabaja = '0000-00-00'
-                                OR CAST(o.fechabaja AS CHAR) = ''
-                                OR o.fechabaja > CURDATE()
-                              THEN 0
-                              ELSE 1
-                            END) AS es_baja
-                 FROM cartilla.obramed o
-                 INNER JOIN obrasoc s ON TRIM(o.obrasoc) = TRIM(s.TACODIGO)
-                 WHERE TRIM(o.medico) = :codigo_prestador
-                   AND UPPER(TRIM(s.TACODIGO)) <> 'OSSEG U'
-                   AND (
-                         o.fechabaja IS NULL
-                         OR o.fechabaja = '0000-00-00'
-                         OR CAST(o.fechabaja AS CHAR) = ''
-                         OR o.fechabaja > CURDATE()
-                         OR (
-                             o.fechabaja <= CURDATE()
-                             AND o.fechabaja >= (CURDATE() - INTERVAL 180 DAY)
-                         )
-                       )
-                 GROUP BY TRIM(s.TACODIGO)
-                 ORDER BY codigo ASC";
+if ($esAdmin) {
+    $sql = "SELECT TRIM(TACODIGO) AS codigo,
+                   TRIM(TADESCRIP) AS nombre,
+                   TAFECHAINI AS fechaalta,
+                   CASE
+                     WHEN TAFECHAFIN IS NOT NULL
+                      AND TAFECHAFIN <> '0000-00-00 00:00:00'
+                      AND TAFECHAFIN <> '0000-00-00'
+                      AND CAST(TAFECHAFIN AS CHAR) <> ''
+                     THEN TAFECHAFIN
+                     ELSE NULL
+                   END AS fechabaja,
+                   CASE
+                     WHEN TAFECHAFIN IS NOT NULL
+                      AND TAFECHAFIN <> '0000-00-00 00:00:00'
+                      AND TAFECHAFIN <> '0000-00-00'
+                      AND CAST(TAFECHAFIN AS CHAR) <> ''
+                      AND TAFECHAFIN < CURDATE()
+                     THEN 1
+                     ELSE 0
+                   END AS es_baja,
+                   CASE
+                     WHEN TAFECHAFIN IS NOT NULL
+                      AND TAFECHAFIN <> '0000-00-00 00:00:00'
+                      AND TAFECHAFIN <> '0000-00-00'
+                      AND CAST(TAFECHAFIN AS CHAR) <> ''
+                      AND TAFECHAFIN < (CURDATE() - INTERVAL 180 DAY)
+                     THEN 1
+                     ELSE 0
+                   END AS baja_antigua
+            FROM cartilla.obrasoc
+            WHERE UPPER(TRIM(TACODIGO)) <> 'OSSEG U'
+            ORDER BY codigo ASC";
+} else {
+    $vigente = "(
+        o.fechabaja IS NULL
+        OR o.fechabaja = '0000-00-00'
+        OR CAST(o.fechabaja AS CHAR) = ''
+        OR o.fechabaja >= CURDATE()
+    )";
+    $sql = "SELECT TRIM(o.obrasoc) AS codigo,
+                   COALESCE(NULLIF(MAX(TRIM(s.TADESCRIP)), ''), MAX(TRIM(o.nomobra))) AS nombre,
+                   CASE
+                     WHEN SUM(CASE WHEN $vigente THEN 1 ELSE 0 END) > 0
+                     THEN MIN(CASE WHEN $vigente THEN o.fechaalta END)
+                     ELSE MIN(o.fechaalta)
+                   END AS fechaalta,
+                   CASE
+                     WHEN SUM(CASE WHEN $vigente THEN 1 ELSE 0 END) > 0
+                     THEN MAX(CASE WHEN $vigente THEN o.fechabaja END)
+                     ELSE MAX(o.fechabaja)
+                   END AS fechabaja,
+                   CASE
+                     WHEN SUM(CASE WHEN $vigente THEN 1 ELSE 0 END) > 0 THEN 0
+                     ELSE 1
+                   END AS es_baja,
+                   0 AS baja_antigua
+            FROM cartilla.obramed o
+            LEFT JOIN cartilla.obrasoc s ON TRIM(o.obrasoc) = TRIM(s.TACODIGO)
+            WHERE TRIM(o.medico) = :codigo_prestador
+              AND UPPER(TRIM(o.obrasoc)) <> 'OSSEG U'
+            GROUP BY TRIM(o.obrasoc)
+            ORDER BY codigo ASC";
+}
 
 try {
     $pdo = Database::getConnection();
-    if ($esAdmin) {
-        $stmt = $pdo->prepare($sqlAdmin);
-        $stmt->execute();
-        $filas = $stmt->fetchAll();
-    } elseif ($codigoPrestador !== '') {
-        $stmt = $pdo->prepare($sqlPrestador);
-        $stmt->execute(array(':codigo_prestador' => $codigoPrestador));
+    if ($esAdmin || $codigoPrestador !== '') {
+        $stmt = $pdo->prepare($sql);
+        $params = array();
+        if (!$esAdmin) {
+            $params[':codigo_prestador'] = $codigoPrestador;
+        }
+        $stmt->execute($params);
         $filas = $stmt->fetchAll();
     }
 } catch (Exception $e) {
@@ -121,28 +114,43 @@ function fechaObra($valor)
     <div class="rounded-lg bg-red-50 text-red-700 px-4 py-3 mb-4 text-sm"><?php echo h($error); ?></div>
 <?php } ?>
 <div class="bg-white rounded-xl shadow p-4">
+    <?php if ($esAdmin) { ?>
+        <label for="mostrar-bajas-antiguas" class="inline-flex items-center gap-3 text-sm text-slate-700 mb-3 cursor-pointer select-none">
+            <span class="relative inline-block w-11 h-6">
+                <input type="checkbox" id="mostrar-bajas-antiguas" class="peer sr-only">
+                <span class="absolute inset-0 rounded-full bg-slate-300 peer-checked:bg-blue-700"></span>
+                <span class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition peer-checked:translate-x-5"></span>
+            </span>
+            Mostrar dadas de baja de más de 180 días
+        </label>
+    <?php } ?>
     <table id="tablaObrasSociales" class="display w-full text-sm">
         <thead>
             <tr>
                 <th>Código</th>
                 <th>Obra social</th>
                 <th>Fecha inicio</th>
+                <th>Fecha baja</th>
                 <th>Estado</th>
             </tr>
         </thead>
         <tbody>
             <?php foreach ($filas as $fila) {
-                $iniIso = trim((string) $fila['TAFECHAINI']);
+                $iniIso = trim((string) $fila['fechaalta']);
                 $iniDia = substr($iniIso, 0, 10);
+                $finIso = trim((string) $fila['fechabaja']);
+                $finDia = substr($finIso, 0, 10);
                 $esBaja = ((int) $fila['es_baja'] === 1);
                 $fechaFin = fechaObra($fila['fechabaja']);
-                $fechaIni = fechaObra($fila['TAFECHAINI']);
+                $fechaIni = fechaObra($fila['fechaalta']);
                 $avisoBaja = $esBaja ? 'DADA DE BAJA DESDE LA FECHA ' . ($fechaFin === '' ? 'S/D' : $fechaFin) : '';
+                $bajaAntigua = $esBaja && ((int) $fila['baja_antigua'] === 1);
                 ?>
-                <tr class="<?php echo $esBaja ? 'fila-baja bg-red-100 text-red-900' : ''; ?>" <?php echo $avisoBaja !== '' ? 'title="' . h($avisoBaja) . '"' : ''; ?>>
+                <tr class="<?php echo $esBaja ? 'fila-baja bg-red-100 text-red-900' : ''; ?>" <?php echo $bajaAntigua ? 'data-baja-antigua="1"' : ''; ?> <?php echo $avisoBaja !== '' ? 'title="' . h($avisoBaja) . '"' : ''; ?>>
                     <td <?php echo $avisoBaja !== '' ? 'title="' . h($avisoBaja) . '"' : ''; ?>><?php echo h($fila['codigo']); ?></td>
                     <td <?php echo $avisoBaja !== '' ? 'title="' . h($avisoBaja) . '"' : ''; ?>><?php echo h($fila['nombre']); ?></td>
                     <td data-order="<?php echo h($iniDia); ?>" <?php echo $avisoBaja !== '' ? 'title="' . h($avisoBaja) . '"' : ''; ?>><?php echo $fechaIni === '' ? 'S/D' : h($fechaIni); ?></td>
+                    <td data-order="<?php echo h($finDia); ?>" <?php echo $avisoBaja !== '' ? 'title="' . h($avisoBaja) . '"' : ''; ?>><?php echo $fechaFin === '' ? 'S/D' : h($fechaFin); ?></td>
                     <td <?php echo $avisoBaja !== '' ? 'title="' . h($avisoBaja) . '"' : ''; ?>>
                         <?php if ($esBaja) { ?>
                             <span class="badge-estado bg-danger">BAJA</span>
@@ -154,5 +162,9 @@ function fechaObra($valor)
             <?php } ?>
         </tbody>
     </table>
-    <p class="text-sm text-slate-500 mt-3">Se mostrarán las OS dadas de baja por un plazo de 180 días, en color rojo.</p>
+    <?php if ($esAdmin) { ?>
+        <p class="text-sm text-slate-500 mt-3">Las dadas de baja de los últimos 180 días se ven en rojo. Las más antiguas quedan ocultas hasta activar el interruptor.</p>
+    <?php } else { ?>
+        <p class="text-sm text-slate-500 mt-3">Las obras con fecha de baja anterior a hoy figuran en rojo.</p>
+    <?php } ?>
 </div>

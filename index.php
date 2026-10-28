@@ -609,6 +609,21 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
             }
             if ($('#tablaObrasSociales').length && $.fn.dataTable) {
                 var idiomaObras = $.extend({}, idiomaTabla, { emptyTable: 'No hay obras sociales para mostrar' });
+                if ($('#mostrar-bajas-antiguas').length) {
+                    $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                        if (settings.nTable.id !== 'tablaObrasSociales') {
+                            return true;
+                        }
+                        if ($('#mostrar-bajas-antiguas').is(':checked')) {
+                            return true;
+                        }
+                        var fila = settings.aoData[dataIndex].nTr;
+                        return !fila || fila.getAttribute('data-baja-antigua') !== '1';
+                    });
+                    $('#mostrar-bajas-antiguas').on('change', function () {
+                        $('#tablaObrasSociales').DataTable().draw();
+                    });
+                }
                 $('#tablaObrasSociales').DataTable({
                     fixedHeader: { header: true, headerOffset: 64 },
                     pageLength: 25,
