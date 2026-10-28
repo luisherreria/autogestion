@@ -1,7 +1,7 @@
 <?php
 
 return array(
-    'clave' => '2026',
+    'clave' => '2013',
     'admin_usuario' => 'Luis',
     'dirs' => array(
         'autorizaciones' => dirname(__FILE__) . '/../archivos/autorizaciones',

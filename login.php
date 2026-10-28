@@ -231,8 +231,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div>
                 <label for="clave" class="block text-sm font-medium text-slate-700 mb-1">Clave</label>
-                <input type="password" name="clave" id="clave" autocomplete="current-password"
-                       class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                <div class="relative">
+                    <input type="password" name="clave" id="clave" autocomplete="current-password"
+                           class="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                    <button type="button" id="ver-clave" aria-label="Mostrar clave" aria-pressed="false"
+                            class="absolute inset-y-0 right-0 px-3 text-slate-500 hover:text-slate-700">
+                        <i class="fa-regular fa-eye"></i>
+                    </button>
+                </div>
             </div>
             <button type="submit" class="w-full bg-blue-800 hover:bg-blue-900 text-white font-medium rounded-lg py-2.5">
                 Ingresar
@@ -243,5 +249,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <p>&copy; <?php echo date('Y'); ?> COMEDICA S.A.</p>
         <p>Desarrollado por Luis Herrería</p>
     </div>
+    <script>
+        (function () {
+            var campo = document.getElementById('clave');
+            var boton = document.getElementById('ver-clave');
+            if (!campo || !boton) {
+                return;
+            }
+            boton.addEventListener('click', function () {
+                var visible = campo.type === 'text';
+                campo.type = visible ? 'password' : 'text';
+                boton.setAttribute('aria-pressed', visible ? 'false' : 'true');
+                boton.setAttribute('aria-label', visible ? 'Mostrar clave' : 'Ocultar clave');
+                boton.querySelector('i').className = visible ? 'fa-regular fa-eye' : 'fa-regular fa-eye-slash';
+            });
+        })();
+    </script>
 </body>
 </html>
