@@ -206,8 +206,9 @@ try {
     $sql .= ' FROM liquida';
     $parametros = array();
     if (!$esAdmin) {
-        $sql .= ' WHERE TRIM(LIPRESTADO) = :codigo AND REPLACE(LIPERIODO, \'/\', \'\') >= \'2501\'';
+        $sql .= ' WHERE TRIM(LIPRESTADO) = :codigo AND REPLACE(LIPERIODO, \'/\', \'\') >= :desde';
         $parametros[':codigo'] = $codigoPrestador;
+        $parametros[':desde'] = periodoMinimoLiquidacion($pdo, $codigoPrestador);
     } else {
         $sql .= ' WHERE REPLACE(LIPERIODO, \'/\', \'\') >= \'2501\'';
     }

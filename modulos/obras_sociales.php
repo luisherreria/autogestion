@@ -97,11 +97,10 @@ function fechaObra($valor)
     if ($valor === '' || strpos($valor, '0000-00-00') === 0) {
         return '';
     }
-    $marca = strtotime($valor);
-    if ($marca === false) {
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $valor, $partes)) {
         return '';
     }
-    return date('d/m/Y', $marca);
+    return $partes[3] . '/' . $partes[2] . '/' . $partes[1];
 }
 ?>
 <style>

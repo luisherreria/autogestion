@@ -45,7 +45,7 @@ function iconoEstadoPermiso($valor)
 <?php if ($error !== '') { ?>
     <div class="rounded-lg bg-red-50 text-red-700 px-4 py-3 mb-4 text-sm"><?php echo h($error); ?></div>
 <?php } ?>
-<div class="bg-white rounded-xl shadow overflow-x-auto p-4">
+<div class="grilla-permisos bg-white rounded-xl shadow overflow-x-auto p-4">
     <table id="tablaPermisos" class="display w-full text-sm">
         <thead>
             <tr>
@@ -108,7 +108,7 @@ function iconoEstadoPermiso($valor)
     </div>
 </div>
 
-<div class="bg-white rounded-xl shadow overflow-x-auto p-4 mt-6">
+<div class="grilla-permisos bg-white rounded-xl shadow overflow-x-auto p-4 mt-6">
     <h2 class="text-lg font-semibold text-slate-900 mb-4">Permisos por Categoría de Prestador (Liquidaciones)</h2>
     <table id="tablaPermisosCategorias" class="display w-full text-sm">
         <thead>

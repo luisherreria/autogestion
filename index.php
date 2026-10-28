@@ -19,6 +19,7 @@ $secciones = array(
     'auditoria_vista' => array('titulo' => 'Control de Auditoría', 'icono' => 'fa-clipboard-list', 'solo_admin' => true),
     'admin_permisos' => array('titulo' => 'Gestión de Permisos', 'icono' => 'fa-user-lock', 'solo_admin' => true),
     'conciliacion' => array('titulo' => 'Conciliador de Saldos', 'icono' => 'fa-scale-balanced', 'solo_admin' => true),
+    'periodos_liquidacion' => array('titulo' => 'Períodos de liquidación', 'icono' => 'fa-calendar-day', 'solo_admin' => true),
     'busqueda_prestadores' => array('titulo' => 'Acceso Prestadores', 'icono' => 'fa-user-secret', 'solo_admin' => true),
 );
 
@@ -83,6 +84,9 @@ if (!$puedeVer) {
 
 if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $puedeVer) {
     require dirname(__FILE__) . '/modulos/admin_archivos_post.php';
+}
+if ($seccion === 'periodos_liquidacion' && $_SERVER['REQUEST_METHOD'] === 'POST' && $puedeVer) {
+    require dirname(__FILE__) . '/modulos/periodos_liquidacion_post.php';
 }
 ?>
 <!DOCTYPE html>
@@ -236,6 +240,38 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
             position: static !important;
             top: auto !important;
         }
+        #tablaPermisos thead th,
+        #tablaPermisosCategorias thead th,
+        #tablaPermisos_wrapper thead th,
+        #tablaPermisosCategorias_wrapper thead th {
+            position: static !important;
+            top: auto !important;
+            z-index: auto !important;
+            box-shadow: none !important;
+        }
+        .grilla-permisos,
+        #tablaPermisos_wrapper,
+        #tablaPermisosCategorias_wrapper,
+        #tablaPermisos_wrapper table,
+        #tablaPermisosCategorias_wrapper table,
+        #tablaPermisos_wrapper th,
+        #tablaPermisos_wrapper td,
+        #tablaPermisos_wrapper tr,
+        #tablaPermisosCategorias_wrapper th,
+        #tablaPermisosCategorias_wrapper td,
+        #tablaPermisosCategorias_wrapper tr {
+            cursor: default !important;
+        }
+        #tablaPermisos_wrapper thead th.sorting,
+        #tablaPermisos_wrapper thead th.sorting_asc,
+        #tablaPermisos_wrapper thead th.sorting_desc,
+        #tablaPermisosCategorias_wrapper thead th.sorting,
+        #tablaPermisosCategorias_wrapper thead th.sorting_asc,
+        #tablaPermisosCategorias_wrapper thead th.sorting_desc,
+        #tablaPermisos_wrapper .btn-editar-permiso,
+        #tablaPermisosCategorias_wrapper .btn-editar-categoria {
+            cursor: pointer !important;
+        }
         #modalDetalleOrdenes,
         #modalDetalleAutRech {
             z-index: 200;
@@ -343,7 +379,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                 </a>
             <?php } ?>
             <?php if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') { ?>
-                <details class="border-t border-slate-700" <?php echo ($seccion === 'admin_archivos' || $seccion === 'auditoria_vista' || $seccion === 'admin_permisos' || $seccion === 'conciliacion' || $seccion === 'busqueda_prestadores') ? 'open' : ''; ?>>
+                <details class="border-t border-slate-700" <?php echo ($seccion === 'admin_archivos' || $seccion === 'auditoria_vista' || $seccion === 'admin_permisos' || $seccion === 'conciliacion' || $seccion === 'periodos_liquidacion' || $seccion === 'busqueda_prestadores') ? 'open' : ''; ?>>
                     <summary class="flex items-center gap-3 px-4 py-3 text-sm cursor-pointer hover:bg-slate-800 list-none">
                         <i class="fa-solid fa-user-shield w-5 text-center"></i>
                         <span class="flex-1">Administrador</span>
@@ -366,7 +402,11 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
                         </li>
                         <li class="border-t border-slate-600 my-1"></li>
                         <li>
-                            <a href="index.php?seccion=busqueda_prestadores" class="block py-1 pl-6 text-blue-400 hover:text-blue-300 font-bold <?php echo $seccion === 'busqueda_prestadores' ? 'text-blue-300' : ''; ?>">
+                            <a href="index.php?seccion=periodos_liquidacion" class="block py-1 pl-6 hover:text-white <?php echo $seccion === 'periodos_liquidacion' ? 'text-white' : ''; ?>">Períodos de liquidación</a>
+                        </li>
+                        <li class="border-t border-slate-600 my-1"></li>
+                        <li>
+                            <a href="index.php?seccion=busqueda_prestadores" class="block py-1 pl-6 text-blue-400 hover:text-blue-300 font-bold <?php echo $seccion === 'busqueda_prestadores' ? 'text-white' : ''; ?>">
                                 <i class="fa-solid fa-user-secret mr-1"></i> Acceso Prestadores
                             </a>
                         </li>
@@ -855,7 +895,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
             if ($('#tablaPermisos').length && $.fn.dataTable) {
                 var idiomaPermisos = $.extend({}, idiomaTabla, { emptyTable: 'No hay permisos para mostrar' });
                 var tablaPermisos = $('#tablaPermisos').DataTable({
-                    fixedHeader: { header: true, headerOffset: 64 },
+                    fixedHeader: false,
                     pageLength: 25,
                     lengthMenu: [[25, 50, 100, -1], [25, 50, 100, 'Todos']],
                     order: [[0, 'asc']],
@@ -942,7 +982,7 @@ if ($seccion === 'admin_archivos' && $_SERVER['REQUEST_METHOD'] === 'POST' && $p
             if ($('#tablaPermisosCategorias').length && $.fn.dataTable) {
                 var idiomaCategorias = $.extend({}, idiomaTabla, { emptyTable: 'No hay categorías para mostrar' });
                 var tablaCategorias = $('#tablaPermisosCategorias').DataTable({
-                    fixedHeader: { header: true, headerOffset: 64 },
+                    fixedHeader: false,
                     pageLength: 25,
                     lengthMenu: [[25, 50, 100, -1], [25, 50, 100, 'Todos']],
                     order: [[0, 'asc']],

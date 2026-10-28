@@ -1006,6 +1006,60 @@ function categoriaPuedeVerLiquidaciones()
     return (int) $fila['ver_pagos'] === 1;
 }
 
+function asegurarTablaPeriodoLiquidacion($pdo)
+{
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS a_liquidaciones_periodo (
+            id INT NOT NULL AUTO_INCREMENT,
+            codigo VARCHAR(20) NOT NULL,
+            nombre VARCHAR(120) NOT NULL DEFAULT '',
+            periodo CHAR(5) NOT NULL,
+            fechaupdate DATETIME NOT NULL,
+            usuario VARCHAR(80) NOT NULL DEFAULT '',
+            PRIMARY KEY (id),
+            UNIQUE KEY uk_liq_periodo_codigo (codigo)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8"
+    );
+}
+
+function periodoLiquidacionOrden($periodo)
+{
+    $periodo = trim((string) $periodo);
+    if (!preg_match('/^(\d{2})\/(\d{2})$/', $periodo, $partes)) {
+        return '';
+    }
+    $mes = (int) $partes[2];
+    if ($mes < 1 || $mes > 12) {
+        return '';
+    }
+    return $partes[1] . $partes[2];
+}
+
+function periodoMinimoLiquidacion($pdo, $codigo)
+{
+    $codigo = trim((string) $codigo);
+    if ($codigo === '') {
+        return '2501';
+    }
+    try {
+        asegurarTablaPeriodoLiquidacion($pdo);
+        $stmt = $pdo->prepare(
+            'SELECT periodo
+             FROM a_liquidaciones_periodo
+             WHERE TRIM(codigo) = :codigo
+             LIMIT 1'
+        );
+        $stmt->execute(array(':codigo' => $codigo));
+        $orden = periodoLiquidacionOrden($stmt->fetchColumn());
+        if ($orden === '') {
+            return '2501';
+        }
+        return $orden;
+    } catch (Exception $e) {
+        return '2501';
+    }
+}
+
 function aplicarFiltroCategoriaLiquidaciones()
 {
     if (categoriaPuedeVerLiquidaciones()) {
